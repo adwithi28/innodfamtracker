@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Club Points Tracker</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<style>
+  /* ── Reset & base ── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: #f5f5f3;
+    color: #1a1a1a;
+    min-height: 100vh;
+  }
+
+  /* ── Layout ── */
+  .shell {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 2rem 1rem 4rem;
+  }
+  .app-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.75rem;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .app-title {
+    font-size: 22px;
+    font-weight: 600;
+    letter-spacing: -0.3px;
+  }
+  .app-subtitle {
+    font-size: 13px;
+    color: #888;
+    margin-top: 2px;
+  }
+
+  /* ── Nav ── */
+  .nav {
+    display: flex;
+    gap: 2px;
+    margin-bottom: 1.5rem;
+    border-bottom: 1px solid #e4e4e0;
+    overflow-x: auto;
+  }
+  .nav-btn {
+    padding: 9px 16px;
+    font-size: 13px;
+    font-weight: 500;
+    border: none;
+    background: transparent;
+    color: #888;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    white-space: nowrap;
+    transition: color 0.15s;
+  }
+  .nav-btn:hover { color: #1a1a1a; }
+  .nav-btn.active { color: #1a1a1a; border-bottom-color: #1a1a1a; }
+
+  /* ── Cards ── */
+  .card {
+    background: #fff;
+    border: 1px solid #e4e4e0;
+    border-radius: 12px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 12px;
+  }
+  .card-title { font-size: 13px; font-weight: 600; margin-bottom: 10px; }
+  .section-title { font-size: 18px; font-weight: 600; margin-bottom: 1rem; }
+
+  /* ── Forms ── */
+  .form-row {
+    display: flex;
+    gap: 8px;
+    align-items: flex-end;
+    flex-wrap: wrap;
+    margin-bottom: 8px;
+  }
+  .field { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 100px; }
+  .field label { font-size: 12px; color: #666; font-weight: 500; }
+  input, select {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background: #fafafa;
+    color: #1a1a1a;
+    font-size: 14px;
+    font-family: inherit;
+    transition: border-color 0.15s;
+  }
+  input:focus, select:focus { outline: none; border-color: #888; background: #fff; }
+
+  /* ── Buttons ── */
+  .btn {
+    padding: 8px 16px;
+    border-radius: 8px;
+    border: 1px solid #ddd;
+    background: transparent;
+    color: #1a1a1a;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.1s, opacity 0.1s;
+    font-family: inherit;
+  }
+  .btn:hover { background: #f0f0ee; }
+  .btn:active { transform: scale(0.98); }
+  .btn-primary { background: #1a1a1a; color: #fff; border-color: #1a1a1a; }
+  .btn-primary:hover { opacity: 0.85; background: #1a1a1a; }
+  .btn-sm { padding: 5px 10px; font-size: 12px; }
+  .btn-danger { color: #c0392b; border-color: #f5c6c2; }
+  .btn-danger:hover { background: #fdf0ef; }
+
+  /* ── Alerts ── */
+  .alert {
+    font-size: 13px;
+    padding: 9px 14px;
+    border-radius: 8px;
+    margin-bottom: 14px;
+  }
+  .alert-success { background: #eaf7f0; color: #1a6641; border: 1px solid #b8e8d0; }
+  .alert-error { background: #fdf0ef; color: #c0392b; border: 1px solid #f5c6c2; }
+  .alert-warn { background: #fff8ec; color: #92610a; border: 1px solid #fde4a0; }
+
+  /* ── Leaderboard ── */
+  .leaderboard { display: grid; gap: 10px; }
+  .lb-item {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 16px;
+    border-radius: 12px;
+    border: 1px solid #e4e4e0;
+    background: #fff;
+  }
+  .lb-rank { font-size: 20px; min-width: 28px; }
+  .lb-name { font-size: 15px; font-weight: 600; }
+  .lb-meta { font-size: 12px; color: #888; margin-top: 2px; }
+  .lb-bar-wrap { flex: 1; height: 8px; background: #f0f0ee; border-radius: 4px; overflow: hidden; }
+  .lb-bar { height: 100%; border-radius: 4px; transition: width 0.5s ease; }
+  .lb-pts { font-size: 16px; font-weight: 600; min-width: 64px; text-align: right; }
+  .lb-members { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 6px; }
+  .lb-member-chip {
+    display: flex; align-items: center; gap: 4px;
+    font-size: 12px; color: #666;
+  }
+
+  /* ── Members ── */
+  .member-list { display: grid; gap: 8px; }
+  .member-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    border-radius: 10px;
+    border: 1px solid #e4e4e0;
+    background: #fff;
+  }
+  .member-info { flex: 1; min-width: 0; }
+  .member-name { font-size: 14px; font-weight: 600; }
+  .member-sub { font-size: 12px; color: #888; }
+
+  /* ── Avatar ── */
+  .avatar {
+    width: 38px; height: 38px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 600;
+    flex-shrink: 0;
+  }
+  .avatar-sm { width: 24px; height: 24px; font-size: 10px; }
+
+  /* ── History table ── */
+  .history-wrap { padding: 4px 0 8px 48px; }
+  .history-table { width: 100%; font-size: 13px; border-collapse: collapse; table-layout: fixed; }
+  .history-table th {
+    text-align: left; font-weight: 600; font-size: 11px; color: #888;
+    padding: 4px 8px 8px; border-bottom: 1px solid #e4e4e0; text-transform: uppercase; letter-spacing: 0.4px;
+  }
+  .history-table td { padding: 7px 8px; border-bottom: 1px solid #f0f0ee; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .history-table tr:last-child td { border-bottom: none; }
+
+  /* ── Tasks ── */
+  .task-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 14px; border-radius: 10px;
+    border: 1px solid #e4e4e0; background: #fff; margin-bottom: 8px;
+  }
+  .task-name { font-size: 14px; font-weight: 500; }
+  .pts-badge {
+    font-size: 12px; font-weight: 600;
+    padding: 3px 10px; border-radius: 20px;
+    background: #f0f0ee; color: #555;
+  }
+
+  /* ── Semester chips ── */
+  .sem-chips { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 1rem; }
+  .sem-chip {
+    padding: 5px 14px; border-radius: 20px; font-size: 12px; font-weight: 500;
+    border: 1px solid #ddd; background: #fff; cursor: pointer; transition: all 0.15s;
+    font-family: inherit;
+  }
+  .sem-chip:hover { border-color: #999; }
+  .sem-chip.active { background: #1a1a1a; color: #fff; border-color: #1a1a1a; }
+
+  /* ── Settings sub-nav ── */
+  .sub-nav { display: flex; gap: 6px; margin-bottom: 1.25rem; flex-wrap: wrap; }
+
+  /* ── Fam name grid ── */
+  .fam-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 1rem; }
+  .fam-card { padding: 14px; border-radius: 12px; border: 1px solid #e4e4e0; background: #fff; }
+  .fam-slot-label {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 11px; color: #888; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.4px;
+    margin-bottom: 8px;
+  }
+  .color-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+
+  /* ── Reassign grid ── */
+  .reassign-grid { display: grid; gap: 8px; }
+  .reassign-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 12px; border-radius: 10px;
+    border: 1px solid #e4e4e0; background: #fff;
+  }
+
+  /* ── Semester list ── */
+  .sem-list-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 14px; border-radius: 10px;
+    border: 1px solid #e4e4e0; background: #fff; margin-bottom: 8px;
+  }
+  .tag {
+    display: inline-block;
+    font-size: 11px; font-weight: 600;
+    padding: 2px 8px; border-radius: 10px;
+    background: #f0f0ee; color: #666;
+    margin-left: 8px; vertical-align: middle;
+  }
+
+  /* ── Misc ── */
+  .empty { font-size: 13px; color: #aaa; padding: 1.5rem 0; text-align: center; }
+  .error-text { font-size: 12px; color: #c0392b; margin-top: 4px; }
+  .pts-green { font-weight: 600; color: #1a6641; }
+  .divider { height: 1px; background: #e4e4e0; margin: 1rem 0; }
+  .helper-text { font-size: 13px; color: #888; margin-bottom: 1rem; line-height: 1.5; }
+  .row-actions { display: flex; gap: 6px; align-items: center; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+// ─────────────────────────────────────────────
+//  Constants
+// ─────────────────────────────────────────────
+const { useState, useEffect } = React;
+const h = React.createElement;
+
+const FAM_META = [
+  { key: "fam1", bg: "#E6F1FB", text: "#0C447C", bar: "#378ADD", defaultName: "Fam 1" },
+  { key: "fam2", bg: "#E1F5EE", text: "#085041", bar: "#1D9E75", defaultName: "Fam 2" },
+  { key: "fam3", bg: "#FAEEDA", text: "#633806", bar: "#EF9F27", defaultName: "Fam 3" },
+  { key: "fam4", bg: "#FBEAF0", text: "#72243E", bar: "#D4537E", defaultName: "Fam 4" },
+];
+
+const RANKS = ["🥇", "🥈", "🥉", "4"];
+const STORAGE_KEY = "club_tracker_v3";
+
+// ─────────────────────────────────────────────
+//  Helpers
+// ─────────────────────────────────────────────
+function uid() { return Math.random().toString(36).slice(2, 9); }
+function today() { return new Date().toISOString().slice(0, 10); }
+function initials(name) { return name.split(" ").map(w => w[0] || "").join("").slice(0, 2).toUpperCase(); }
+function getFamMeta(key) { return FAM_META.find(f => f.key === key) || FAM_META[0]; }
+
+function loadState() {
+  try { const d = localStorage.getItem(STORAGE_KEY); return d ? JSON.parse(d) : null; } catch { return null; }
+}
+function saveState(s) {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(s)); } catch {}
+}
+
+// ─────────────────────────────────────────────
+//  Default seed data
+// ─────────────────────────────────────────────
+const DEFAULT_STATE = {
+  semesters: [{ id: "s1", name: "Fall 2024" }],
+  activeSem: "s1",
+  famNames: { s1: { fam1: "Phoenix", fam2: "Titan", fam3: "Ember", fam4: "Nova" } },
+  tasks: [
+    { id: "t1", name: "Attended meeting", points: 10 },
+    { id: "t2", name: "Volunteered at event", points: 25 },
+    { id: "t3", name: "Recruited new member", points: 50 },
+  ],
+  members: [
+    { id: "m1", name: "Alex Chen",   famBySem: { s1: "fam1" } },
+    { id: "m2", name: "Jordan Lee",  famBySem: { s1: "fam2" } },
+    { id: "m3", name: "Riley Park",  famBySem: { s1: "fam1" } },
+    { id: "m4", name: "Morgan Kim",  famBySem: { s1: "fam3" } },
+  ],
+  completions: [
+    { id: "c1", memberId: "m1", taskId: "t1", date: "2024-09-10", semId: "s1" },
+    { id: "c2", memberId: "m2", taskId: "t2", date: "2024-09-12", semId: "s1" },
+    { id: "c3", memberId: "m3", taskId: "t1", date: "2024-09-15", semId: "s1" },
+    { id: "c4", memberId: "m4", taskId: "t3", date: "2024-09-18", semId: "s1" },
+    { id: "c5", memberId: "m1", taskId: "t2", date: "2024-09-20", semId: "s1" },
+  ],
+};
+
+// ─────────────────────────────────────────────
+//  Root App
+// ─────────────────────────────────────────────
+function App() {
+  const [state, setState] = useState(() => loadState() || DEFAULT_STATE);
+  const [tab, setTab] = useState("leaderboard");
+  const [flash, setFlash] = useState(null);
+
+  function update(fn) {
+    setState(prev => { const next = fn(prev); saveState(next); return next; });
+  }
+
+  function showFlash(msg, type = "success") {
+    setFlash({ msg, type });
+    setTimeout(() => setFlash(null), 3000);
+  }
+
+  // ── Derived helpers ──
+  const activeSem = state.semesters.find(s => s.id === state.activeSem) || state.semesters[0];
+  const famNames = state.famNames[state.activeSem] || {};
+
+  function getFamName(famKey) { return famNames[famKey] || getFamMeta(famKey).defaultName; }
+  function getMemberFam(member) { return (member.famBySem || {})[state.activeSem] || null; }
+
+  function memberPts(memberId) {
+    return state.completions
+      .filter(c => c.memberId === memberId && c.semId === state.activeSem)
+      .reduce((sum, c) => {
+        const t = state.tasks.find(x => x.id === c.taskId);
+        return sum + (t ? t.points : 0);
+      }, 0);
+  }
+
+  function famPts(famKey) {
+    return state.members
+      .filter(m => getMemberFam(m) === famKey)
+      .reduce((sum, m) => sum + memberPts(m.id), 0);
+  }
+
+  const famsRanked = [...FAM_META]
+    .map(f => ({ ...f, displayName: getFamName(f.key), pts: famPts(f.key) }))
+    .sort((a, b) => b.pts - a.pts);
+
+  const maxPts = Math.max(1, ...famsRanked.map(f => f.pts));
+
+  const shared = { state, update, showFlash, activeSem, famNames, getFamName, getMemberFam, memberPts, famPts, famsRanked, maxPts };
+
+  const TABS = [
+    ["leaderboard", "🏆 Leaderboard"],
+    ["members",     "👤 Members"],
+    ["tasks",       "⚡ Tasks"],
+    ["log",         "📋 Log Points"],
+    ["settings",    "⚙️ Settings"],
+  ];
+
+  return h("div", { className: "shell" },
+    h("div", { className: "app-header" },
+      h("div", null,
+        h("div", { className: "app-title" }, "Club Points Tracker"),
+        h("div", { className: "app-subtitle" }, activeSem.name + " · " + state.members.length + " members")
+      )
+    ),
+    flash && h("div", { className: `alert alert-${flash.type}` }, flash.msg),
+    h("div", { className: "nav" },
+      TABS.map(([t, label]) =>
+        h("button", { key: t, className: `nav-btn${tab === t ? " active" : ""}`, onClick: () => setTab(t) }, label)
+      )
+    ),
+    tab === "leaderboard" && h(Leaderboard, shared),
+    tab === "members"     && h(Members, shared),
+    tab === "tasks"       && h(Tasks, shared),
+    tab === "log"         && h(LogPoints, shared),
+    tab === "settings"    && h(Settings, shared),
+  );
+}
+
+// ─────────────────────────────────────────────
+//  Semester Picker (shared top bar)
+// ─────────────────────────────────────────────
+function SemPicker({ state, update }) {
+  return h("div", { className: "sem-chips" },
+    state.semesters.map(s =>
+      h("button", {
+        key: s.id,
+        className: `sem-chip${s.id === state.activeSem ? " active" : ""}`,
+        onClick: () => update(p => ({ ...p, activeSem: s.id }))
+      }, s.name)
+    )
+  );
+}
+
+// ─────────────────────────────────────────────
+//  Leaderboard Tab
+// ─────────────────────────────────────────────
+function Leaderboard({ state, update, activeSem, famsRanked, maxPts, getMemberFam, memberPts }) {
+  return h("div", null,
+    h(SemPicker, { state, update }),
+    h("p", { className: "section-title" }, activeSem.name + " Standings"),
+    h("div", { className: "leaderboard" },
+      famsRanked.map((fam, i) => {
+        const fc = getFamMeta(fam.key);
+        const famMembers = state.members
+          .filter(m => getMemberFam(m) === fam.key)
+          .sort((a, b) => memberPts(b.id) - memberPts(a.id));
+
+        return h("div", { key: fam.key, className: "lb-item", style: { borderLeft: `3px solid ${fc.bar}` } },
+          h("div", { className: "lb-rank" }, RANKS[i] || String(i + 1)),
+          h("div", { style: { flex: 1 } },
+            h("div", { style: { display: "flex", alignItems: "center", gap: 10, marginBottom: 8 } },
+              h("div", null,
+                h("div", { className: "lb-name" }, fam.displayName),
+                h("div", { className: "lb-meta" }, famMembers.length + " member" + (famMembers.length !== 1 ? "s" : ""))
+              ),
+            ),
+            h("div", { className: "lb-bar-wrap" },
+              h("div", { className: "lb-bar", style: { width: Math.round(fam.pts / maxPts * 100) + "%", background: fc.bar } })
+            ),
+            famMembers.length > 0 && h("div", { className: "lb-members", style: { marginTop: 8 } },
+              famMembers.slice(0, 6).map(m =>
+                h("div", { key: m.id, className: "lb-member-chip" },
+                  h("div", { className: "avatar avatar-sm", style: { background: fc.bg, color: fc.text } }, initials(m.name)),
+                  m.name + ": " + memberPts(m.id) + " pts"
+                )
+              )
+            )
+          ),
+          h("div", { className: "lb-pts" }, fam.pts + " pts")
+        );
+      })
+    )
+  );
+}
+
+// ─────────────────────────────────────────────
+//  Members Tab
+// ─────────────────────────────────────────────
+function Members({ state, update, showFlash, activeSem, getFamName, getMemberFam, memberPts }) {
+  const [name, setName]     = useState("");
+  const [fam, setFam]       = useState("fam1");
+  const [view, setView]     = useState(null);
+  const [err, setErr]       = useState("");
+
+  function addMember() {
+    if (!name.trim()) { setErr("Name is required"); return; }
+    const id = uid();
+    update(s => ({ ...s, members: [...s.members, { id, name: name.trim(), famBySem: { [s.activeSem]: fam } }] }));
+    showFlash(name.trim() + " added to " + getFamName(fam) + "!");
+    setName(""); setErr("");
+  }
+
+  function removeMember(id) {
+    update(s => ({
+      ...s,
+      members: s.members.filter(m => m.id !== id),
+      completions: s.completions.filter(c => c.memberId !== id),
+    }));
+    if (view === id) setView(null);
+    showFlash("Member removed");
+  }
+
+  const sorted = [...state.members].sort((a, b) => memberPts(b.id) - memberPts(a.id));
+  const unassigned = state.members.filter(m => !getMemberFam(m));
+
+  return h("div", null,
+    h(SemPicker, { state, update }),
+    h("p", { className: "section-title" }, "Members — " + activeSem.name),
+    unassigned.length > 0 && h("div", { className: "alert alert-warn" },
+      unassigned.length + " member" + (unassigned.length > 1 ? "s" : "") +
+      " not yet assigned to a fam this semester. Go to Settings → Reassign fams."
+    ),
+    h("div", { className: "card" },
+      h("div", { className: "card-title" }, "Add member"),
+      h("div", { className: "form-row" },
+        h("div", { className: "field" },
+          h("label", null, "Full name"),
+          h("input", { value: name, onChange: e => setName(e.target.value), placeholder: "e.g. Jordan Lee", onKeyDown: e => e.key === "Enter" && addMember() })
+        ),
+        h("div", { className: "field", style: { maxWidth: 160 } },
+          h("label", null, "Fam"),
+          h("select", { value: fam, onChange: e => setFam(e.target.value) },
+            FAM_META.map(f => h("option", { key: f.key, value: f.key }, getFamName(f.key)))
+          )
+        ),
+        h("button", { className: "btn btn-primary", onClick: addMember }, "Add")
+      ),
+      err && h("p", { className: "error-text" }, err)
+    ),
+    h("div", { className: "member-list" },
+      sorted.length === 0 && h("div", { className: "empty" }, "No members yet — add one above"),
+      sorted.map(m => {
+        const famKey = getMemberFam(m);
+        const fc = famKey ? getFamMeta(famKey) : null;
+        const pts = memberPts(m.id);
+        const history = state.completions
+          .filter(c => c.memberId === m.id && c.semId === state.activeSem)
+          .sort((a, b) => b.date.localeCompare(a.date));
+
+        return h("div", { key: m.id },
+          h("div", { className: "member-row" },
+            h("div", { className: "avatar", style: { background: fc ? fc.bg : "#f0f0ee", color: fc ? fc.text : "#888" } }, initials(m.name)),
+            h("div", { className: "member-info" },
+              h("div", { className: "member-name" }, m.name),
+              h("div", { className: "member-sub" }, famKey ? getFamName(famKey) : "⚠️ unassigned this semester")
+            ),
+            h("span", { style: { fontSize: 13, color: "#888", marginRight: 6 } }, pts + " pts"),
+            h("div", { className: "row-actions" },
+              h("button", { className: "btn btn-sm", onClick: () => setView(view === m.id ? null : m.id) }, view === m.id ? "Hide" : "History"),
+              h("button", { className: "btn btn-sm btn-danger", onClick: () => removeMember(m.id) }, "✕")
+            )
+          ),
+          view === m.id && h("div", { className: "history-wrap" },
+            history.length === 0
+              ? h("p", { className: "empty", style: { padding: "8px 0" } }, "No tasks logged this semester")
+              : h("table", { className: "history-table" },
+                  h("thead", null,
+                    h("tr", null,
+                      h("th", { style: { width: 95 } }, "Date"),
+                      h("th", null, "Task"),
+                      h("th", { style: { width: 55 } }, "Points")
+                    )
+                  ),
+                  h("tbody", null,
+                    history.map(c => {
+                      const t = state.tasks.find(x => x.id === c.taskId);
+                      return h("tr", { key: c.id },
+                        h("td", null, c.date),
+                        h("td", null, t ? t.name : "(deleted task)"),
+                        h("td", { className: "pts-green" }, t ? "+" + t.points : "—")
+                      );
+                    })
+                  )
+                )
+          )
+        );
+      })
+    )
+  );
+}
+
+// ─────────────────────────────────────────────
+//  Tasks Tab
+// ─────────────────────────────────────────────
+function Tasks({ state, update, showFlash }) {
+  const [name, setName] = useState("");
+  const [pts, setPts]   = useState("");
+  const [err, setErr]   = useState("");
+
+  function addTask() {
+    if (!name.trim() || !pts || isNaN(Number(pts)) || Number(pts) <= 0) {
+      setErr("Enter a task name and a positive point value"); return;
+    }
+    update(s => ({ ...s, tasks: [...s.tasks, { id: uid(), name: name.trim(), points: Number(pts) }] }));
+    showFlash("Task added!");
+    setName(""); setPts(""); setErr("");
+  }
+
+  function removeTask(id) {
+    update(s => ({ ...s, tasks: s.tasks.filter(t => t.id !== id), completions: s.completions.filter(c => c.taskId !== id) }));
+    showFlash("Task removed");
+  }
+
+  return h("div", null,
+    h("p", { className: "section-title" }, "Tasks & Point Values"),
+    h("p", { className: "helper-text" }, "Tasks are shared across all semesters. Deleting a task also removes its logged completions."),
+    h("div", { className: "card" },
+      h("div", { className: "card-title" }, "Add task"),
+      h("div", { className: "form-row" },
+        h("div", { className: "field" },
+          h("label", null, "Task name"),
+          h("input", { value: name, onChange: e => setName(e.target.value), placeholder: "e.g. Attended meeting", onKeyDown: e => e.key === "Enter" && addTask() })
+        ),
+        h("div", { className: "field", style: { maxWidth: 100 } },
+          h("label", null, "Points"),
+          h("input", { type: "number", min: 1, value: pts, onChange: e => setPts(e.target.value), placeholder: "10", onKeyDown: e => e.key === "Enter" && addTask() })
+        ),
+        h("button", { className: "btn btn-primary", onClick: addTask }, "Add")
+      ),
+      err && h("p", { className: "error-text" }, err)
+    ),
+    state.tasks.length === 0 && h("div", { className: "empty" }, "No tasks yet"),
+    state.tasks.map(t =>
+      h("div", { key: t.id, className: "task-row" },
+        h("span", { className: "task-name" }, t.name),
+        h("div", { className: "row-actions" },
+          h("span", { className: "pts-badge" }, t.points + " pts"),
+          h("button", { className: "btn btn-sm btn-danger", onClick: () => removeTask(t.id) }, "✕")
+        )
+      )
+    )
+  );
+}
+
+// ─────────────────────────────────────────────
+//  Log Points Tab
+// ─────────────────────────────────────────────
+function LogPoints({ state, update, showFlash, activeSem, getFamName, getMemberFam }) {
+  const [memberId, setMemberId] = useState("");
+  const [taskId, setTaskId]     = useState("");
+  const [date, setDate]         = useState(today());
+  const [err, setErr]           = useState("");
+
+  function logPoints() {
+    if (!memberId || !taskId || !date) { setErr("Please fill in all fields"); return; }
+    const task   = state.tasks.find(t => t.id === taskId);
+    const member = state.members.find(m => m.id === memberId);
+    update(s => ({ ...s, completions: [...s.completions, { id: uid(), memberId, taskId, date, semId: s.activeSem }] }));
+    showFlash("+" + task.points + " pts logged for " + member.name + "!");
+    setErr(""); setTaskId("");
+  }
+
+  const recent = [...state.completions]
+    .filter(c => c.semId === state.activeSem)
+    .sort((a, b) => b.date.localeCompare(a.date))
+    .slice(0, 12);
+
+  const assignedMembers = state.members.filter(m => getMemberFam(m));
+
+  return h("div", null,
+    h(SemPicker, { state, update }),
+    h("p", { className: "section-title" }, "Log a Completed Task"),
+    h("div", { className: "card" },
+      h("div", { className: "form-row" },
+        h("div", { className: "field" },
+          h("label", null, "Member"),
+          h("select", { value: memberId, onChange: e => setMemberId(e.target.value) },
+            h("option", { value: "" }, "Select member…"),
+            [...assignedMembers].sort((a, b) => a.name.localeCompare(b.name)).map(m =>
+              h("option", { key: m.id, value: m.id }, m.name + " (" + getFamName(getMemberFam(m)) + ")")
+            )
+          )
+        ),
+        h("div", { className: "field" },
+          h("label", null, "Task"),
+          h("select", { value: taskId, onChange: e => setTaskId(e.target.value) },
+            h("option", { value: "" }, "Select task…"),
+            state.tasks.map(t => h("option", { key: t.id, value: t.id }, t.name + " (+" + t.points + " pts)"))
+          )
+        ),
+        h("div", { className: "field", style: { maxWidth: 145 } },
+          h("label", null, "Date"),
+          h("input", { type: "date", value: date, onChange: e => setDate(e.target.value) })
+        )
+      ),
+      err && h("p", { className: "error-text", style: { marginBottom: 8 } }, err),
+      h("button", { className: "btn btn-primary", onClick: logPoints }, "Log Points")
+    ),
+    h("p", { style: { fontSize: 14, fontWeight: 600, marginBottom: 10, marginTop: 4 } }, "Recent activity — " + activeSem.name),
+    recent.length === 0 ? h("div", { className: "empty" }, "No activity logged yet") :
+    h("table", { className: "history-table", style: { width: "100%" } },
+      h("thead", null,
+        h("tr", null,
+          h("th", { style: { width: 95 } }, "Date"),
+          h("th", null, "Member"),
+          h("th", null, "Task"),
+          h("th", { style: { width: 55 } }, "Points")
+        )
+      ),
+      h("tbody", null,
+        recent.map(c => {
+          const m  = state.members.find(x => x.id === c.memberId);
+          const t  = state.tasks.find(x => x.id === c.taskId);
+          const fk = m ? getMemberFam(m) : null;
+          const fc = fk ? getFamMeta(fk) : null;
+          return h("tr", { key: c.id },
+            h("td", null, c.date),
+            h("td", null,
+              m ? h("div", { style: { display: "flex", alignItems: "center", gap: 6 } },
+                fc && h("div", { className: "avatar avatar-sm", style: { background: fc.bg, color: fc.text } }, initials(m.name)),
+                m.name
+              ) : "(deleted)"
+            ),
+            h("td", null, t ? t.name : "(deleted)"),
+            h("td", { className: "pts-green" }, t ? "+" + t.points : "—")
+          );
+        })
+      )
+    )
+  );
+}
+
+// ─────────────────────────────────────────────
+//  Settings Tab
+// ─────────────────────────────────────────────
+function Settings({ state, update, showFlash, getFamName, getMemberFam }) {
+  const [subTab, setSubTab]       = useState("fams");
+  const [newSemName, setNewSemName] = useState("");
+  const [semErr, setSemErr]       = useState("");
+  const [localNames, setLocalNames] = useState(null);
+  const [reassignMap, setReassignMap] = useState({});
+
+  const semId = state.activeSem;
+  const currentNames = state.famNames[semId] || {};
+
+  // Sync local name inputs when semester changes
+  useEffect(() => {
+    const names = FAM_META.reduce((acc, f) => ({ ...acc, [f.key]: currentNames[f.key] || f.defaultName }), {});
+    setLocalNames(names);
+  }, [semId]);
+
+  // Sync reassign dropdowns when semester changes
+  useEffect(() => {
+    const map = {};
+    state.members.forEach(m => { map[m.id] = getMemberFam(m) || ""; });
+    setReassignMap(map);
+  }, [semId, state.members.length]);
+
+  function saveFamNames() {
+    if (!localNames) return;
+    const trimmed = Object.fromEntries(
+      Object.entries(localNames).map(([k, v]) => [k, v.trim() || getFamMeta(k).defaultName])
+    );
+    update(s => ({ ...s, famNames: { ...s.famNames, [semId]: { ...s.famNames[semId], ...trimmed } } }));
+    showFlash("Fam names saved!");
+  }
+
+  function addSemester() {
+    if (!newSemName.trim()) { setSemErr("Enter a semester name"); return; }
+    const id = uid();
+    const prevNames = state.famNames[semId] || {};
+    update(s => ({
+      ...s,
+      semesters: [...s.semesters, { id, name: newSemName.trim() }],
+      activeSem: id,
+      famNames: { ...s.famNames, [id]: { ...prevNames } },
+    }));
+    showFlash(newSemName.trim() + " created! Now reassign fams below.");
+    setNewSemName(""); setSemErr("");
+    setSubTab("reassign");
+  }
+
+  function saveReassignments() {
+    update(s => ({
+      ...s,
+      members: s.members.map(m => ({
+        ...m,
+        famBySem: { ...m.famBySem, [semId]: reassignMap[m.id] || null }
+      }))
+    }));
+    showFlash("Fam assignments saved!");
+  }
+
+  function deleteSemester(id) {
+    if (state.semesters.length <= 1) { showFlash("Can't delete the only semester", "error"); return; }
+    const remaining = state.semesters.filter(s => s.id !== id);
+    update(s => ({
+      ...s,
+      semesters: remaining,
+      activeSem: s.activeSem === id ? remaining[remaining.length - 1].id : s.activeSem,
+      completions: s.completions.filter(c => c.semId !== id),
+    }));
+    showFlash("Semester deleted");
+  }
+
+  const SUB_TABS = [["fams", "Fam names"], ["reassign", "Reassign fams"], ["semesters", "Semesters"]];
+
+  return h("div", null,
+    h(SemPicker, { state, update }),
+    h("p", { className: "section-title" }, "Settings"),
+    h("div", { className: "sub-nav" },
+      SUB_TABS.map(([k, label]) =>
+        h("button", { key: k, className: `btn btn-sm${subTab === k ? " btn-primary" : ""}`, onClick: () => setSubTab(k) }, label)
+      )
+    ),
+
+    // ── Fam Names ──
+    subTab === "fams" && h("div", null,
+      h("p", { className: "helper-text" },
+        "Names apply to the active semester only. Switch semesters at the top to rename fams for another term."
+      ),
+      localNames && h("div", { className: "fam-grid" },
+        FAM_META.map(f =>
+          h("div", { key: f.key, className: "fam-card" },
+            h("div", { className: "fam-slot-label" },
+              h("span", { className: "color-dot", style: { background: f.bar } }),
+              "Slot " + (FAM_META.indexOf(f) + 1)
+            ),
+            h("input", {
+              value: localNames[f.key] || "",
+              onChange: ev => setLocalNames(p => ({ ...p, [f.key]: ev.target.value })),
+              placeholder: f.defaultName,
+            })
+          )
+        )
+      ),
+      h("button", { className: "btn btn-primary", onClick: saveFamNames }, "Save fam names")
+    ),
+
+    // ── Reassign Fams ──
+    subTab === "reassign" && h("div", null,
+      h("p", { className: "helper-text" },
+        "Set each member's fam for this semester. Members can move to any fam between semesters — their full history is always preserved."
+      ),
+      h("div", { className: "reassign-grid" },
+        state.members.length === 0 && h("div", { className: "empty" }, "No members yet"),
+        [...state.members].sort((a, b) => a.name.localeCompare(b.name)).map(m => {
+          const famKey = reassignMap[m.id] || "";
+          const fc = famKey ? getFamMeta(famKey) : null;
+          return h("div", { key: m.id, className: "reassign-row" },
+            h("div", { className: "avatar", style: { background: fc ? fc.bg : "#f0f0ee", color: fc ? fc.text : "#888" } }, initials(m.name)),
+            h("span", { style: { flex: 1, fontSize: 14, fontWeight: 500 } }, m.name),
+            h("select", {
+              value: famKey,
+              onChange: ev => setReassignMap(p => ({ ...p, [m.id]: ev.target.value })),
+              style: { maxWidth: 160 }
+            },
+              h("option", { value: "" }, "— unassigned —"),
+              FAM_META.map(f => h("option", { key: f.key, value: f.key }, getFamName(f.key)))
+            )
+          );
+        })
+      ),
+      state.members.length > 0 && h("button", { className: "btn btn-primary", style: { marginTop: 12 }, onClick: saveReassignments }, "Save assignments")
+    ),
+
+    // ── Semesters ──
+    subTab === "semesters" && h("div", null,
+      h("p", { className: "helper-text" },
+        "Each semester has its own fam names, member assignments, and point logs. Creating a new semester copies the current fam names as a starting point."
+      ),
+      h("div", { className: "card" },
+        h("div", { className: "card-title" }, "New semester"),
+        h("div", { className: "form-row" },
+          h("div", { className: "field" },
+            h("label", null, "Semester name"),
+            h("input", { value: newSemName, onChange: e => setNewSemName(e.target.value), placeholder: "e.g. Spring 2025", onKeyDown: e => e.key === "Enter" && addSemester() })
+          ),
+          h("button", { className: "btn btn-primary", onClick: addSemester }, "Create")
+        ),
+        semErr && h("p", { className: "error-text" }, semErr)
+      ),
+      state.semesters.map(s =>
+        h("div", { key: s.id, className: "sem-list-row" },
+          h("div", null,
+            h("span", { style: { fontSize: 14, fontWeight: 600 } }, s.name),
+            s.id === state.activeSem && h("span", { className: "tag" }, "active")
+          ),
+          h("div", { className: "row-actions" },
+            s.id !== state.activeSem && h("button", { className: "btn btn-sm", onClick: () => update(p => ({ ...p, activeSem: s.id })) }, "Switch to"),
+            state.semesters.length > 1 && h("button", { className: "btn btn-sm btn-danger", onClick: () => deleteSemester(s.id) }, "Delete")
+          )
+        )
+      )
+    )
+  );
+}
+
+// ─────────────────────────────────────────────
+//  Mount
+// ─────────────────────────────────────────────
+ReactDOM.render(React.createElement(App), document.getElementById("root"));
+</script>
+</body>
+</html>
