@@ -1,40 +1,441 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Innovative Design at USC Tracker</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Innovative Design Points Tracker</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fragment+Mono:ital@0;1&family=Victor+Mono:ital,wght@0,100..700;1,100..700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <style>
-:root{
-  --bg:#fbfbfa;--ink:#2e2e2e;--muted:#797979;--line:#d7d7d2;--soft:#f4f4f2;--dark:#3f3d3d;--danger:#ff7777;
-  --blue:#dfe9ff;--blueBar:#7d9be8;--gold:#f8efd9;--goldBar:#a89573;--green:#e7f6e2;--greenBar:#7caf72;--pink:#fae3e3;--pinkBar:#b86b73;
-}
-*{box-sizing:border-box;margin:0;padding:0}
-body{background:var(--bg);color:var(--ink);font-family:"Fragment Mono",monospace;font-size:12px;min-height:100vh}
-h1,h2,h3,h4,.heading,.nav-btn,.btn,label,.section-title,.app-title,.card-title,.profile-name,.fam-name{font-family:"Victor Mono",monospace;font-weight:500;letter-spacing:-.03em}
-button,input,select{font:inherit}
-.shell{max-width:1160px;margin:0 auto;padding:36px 36px 64px}
-.topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:28px;gap:20px}
-.app-title{font-size:26px;text-transform:uppercase;letter-spacing:-.05em;white-space:nowrap}.nav{display:flex;gap:24px;align-items:center}.nav-btn{border:0;background:none;font-size:11px;cursor:pointer;color:var(--ink);padding:4px 0}.nav-btn.active{text-decoration:underline;text-underline-offset:4px}.page{animation:fade .15s ease}@keyframes fade{from{opacity:.6;transform:translateY(3px)}to{opacity:1;transform:none}}
-.toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:24px}.pill,.btn,input,select{border:1px solid var(--line);border-radius:999px;background:#fff;color:var(--ink);height:28px;padding:0 14px;font-size:10px}.btn{cursor:pointer;text-transform:uppercase;display:inline-flex;align-items:center;justify-content:center;gap:6px}.btn:hover{background:var(--soft)}.btn-dark{background:var(--dark);color:#fff;border-color:var(--dark)}.btn-danger{border-color:#ffb2b2;color:#e85050;background:#fff}.btn-icon{width:28px;padding:0;border-radius:999px;font-size:15px}.floating-add{position:fixed;right:44px;bottom:42px;width:50px;height:50px;border-radius:50%;background:var(--dark);color:#fff;border:0;font-size:24px;cursor:pointer;box-shadow:0 8px 22px rgba(0,0,0,.18)}
-.section-title{font-size:15px;text-transform:uppercase;margin-bottom:16px}.muted{color:var(--muted)}.empty{padding:34px 0;text-align:center;color:#aaa}.alert{padding:10px 14px;border:1px solid var(--line);border-radius:12px;background:#fff;margin-bottom:16px}.alert-error{border-color:#ffb2b2;color:#e85050}.grid{display:grid;gap:14px}.card{background:#fff;border:1px solid var(--line);border-radius:10px;padding:14px}.card-title{font-size:12px;text-transform:uppercase;margin-bottom:12px}.form-row{display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap}.field{display:flex;flex-direction:column;gap:5px;min-width:140px;flex:1}.field label{font-size:9px;text-transform:uppercase;color:var(--muted)}.field input,.field select{width:100%;height:30px}.divider{height:1px;background:var(--line);margin:16px 0}
-.sem-chips{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:22px}.sem-chip{height:28px}.sem-chip.active{background:var(--dark);color:#fff;border-color:var(--dark)}
-/* Leaderboard */
-.leaderboard{display:grid;gap:18px}.fam-card{border-radius:4px;padding:14px 16px}.fam-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}.fam-name{font-size:17px;text-transform:uppercase}.fam-points{font-size:16px;text-transform:uppercase}.bar-wrap{height:10px;background:rgba(255,255,255,.75);border-radius:999px;overflow:hidden;margin-bottom:12px}.bar{height:100%;border-radius:999px;transition:width .35s ease}.member-chips{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.chip{display:inline-flex;align-items:center;gap:5px;font-size:9px;color:#535353}.avatar{width:24px;height:24px;border-radius:999px;background:var(--dark);color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;flex:0 0 auto}.avatar-lg{width:58px;height:58px;font-size:18px}.chip-more{margin-left:auto;font-size:10px;color:#777}
-/* Members */
-.member-list{display:grid;gap:14px}.member-row{display:flex;align-items:center;gap:14px;border:1px solid var(--line);background:#fff;border-radius:9px;padding:12px 14px;cursor:pointer}.member-row:hover{background:#f8f8f7}.member-main{flex:1;min-width:0}.member-name{font-size:15px;text-transform:uppercase}.member-sub{display:flex;gap:6px;flex-wrap:wrap;margin-top:5px}.mini-tag{border:1px solid var(--line);border-radius:999px;padding:2px 8px;font-size:8px;background:#fff;color:#555}.member-points{font-size:15px;text-transform:uppercase;white-space:nowrap}.search{min-width:260px;margin-left:auto}
-/* Tasks */
-.task-create{display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:9px;background:#fff;padding:8px 10px;margin-bottom:28px}.task-create .label{font-family:"Victor Mono",monospace;font-size:14px;text-transform:uppercase;margin-right:6px}.task-create input{height:24px}.task-row{display:flex;align-items:center;gap:12px;border:1px solid var(--line);border-radius:999px;background:#fff;padding:7px 8px 7px 15px;margin-bottom:12px}.task-name{flex:1}.task-points{font-style:italic;color:#555}.task-actions{display:flex;gap:6px}.btn-mini{height:20px;padding:0 12px;font-size:8px}.edit-input{height:22px!important;border-radius:999px!important}
-/* Profile */
-.profile-card{border:1px solid var(--line);background:#fff;border-radius:14px;padding:22px}.profile-top{display:flex;gap:18px;align-items:center;margin-bottom:22px}.profile-name{font-size:28px;text-transform:uppercase;line-height:1}.profile-meta{margin-top:8px;color:var(--muted)}.profile-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px}.profile-stat{border:1px solid var(--line);border-radius:10px;background:var(--soft);padding:12px}.profile-label{font-size:9px;text-transform:uppercase;color:var(--muted);margin-bottom:7px}.profile-value{font-size:13px}.table{width:100%;border-collapse:collapse;font-size:11px}.table th{text-align:left;font-family:"Victor Mono",monospace;font-size:9px;text-transform:uppercase;color:var(--muted);font-weight:500;border-bottom:1px solid var(--line);padding:8px}.table td{border-bottom:1px solid #ededeb;padding:9px 8px}.table tr:last-child td{border-bottom:0}
-/* Settings */
-.settings-row{display:flex;align-items:center;gap:10px;border:1px solid var(--line);background:#fff;border-radius:10px;padding:12px;margin-bottom:10px}.settings-row-main{flex:1}.reset-zone{border:1px dashed #e0a0a0;background:#fff7f7;border-radius:12px;padding:16px;margin-top:26px}.subnav{display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap}.fam-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px}.fam-edit-card{border:1px solid var(--line);background:#fff;border-radius:10px;padding:14px}.dot{width:10px;height:10px;border-radius:50%;display:inline-block}.slot{display:flex;align-items:center;gap:7px;color:var(--muted);font-size:9px;text-transform:uppercase;margin-bottom:8px}.modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.35);display:flex;align-items:flex-end;justify-content:center;padding:24px;z-index:5}.modal{background:#3d3b3b;color:#fff;border-radius:999px;padding:10px 14px;display:flex;align-items:center;gap:8px;box-shadow:0 12px 40px rgba(0,0,0,.25);max-width:100%;flex-wrap:wrap}.modal input,.modal select{background:#464444;color:#fff;border-color:#777}.modal .btn{height:24px}.modal label{display:flex;align-items:center;gap:4px;font-size:9px}.modal .close{border:0;background:none;color:#fff;font-size:22px;cursor:pointer}.modal-title{font-family:"Victor Mono",monospace;font-size:10px;text-transform:uppercase;margin-right:5px}
-@media(max-width:740px){.shell{padding:24px 18px 80px}.topbar{align-items:flex-start;flex-direction:column}.nav{gap:14px;flex-wrap:wrap}.app-title{font-size:20px}.member-row{align-items:flex-start}.member-points{font-size:12px}.search{margin-left:0;min-width:100%;width:100%}.task-create{align-items:flex-start;flex-direction:column}.modal{border-radius:18px;align-items:stretch}.modal input,.modal select{width:100%}.floating-add{right:20px;bottom:20px}}
+  :root {
+    --ink: #3f3d3d;
+    --muted: #77716f;
+    --line: #bdb8b4;
+    --soft-line: #dedbd8;
+    --paper: #f7f7f5;
+    --white: #ffffff;
+    --dark: #3d3b3b;
+    --danger: #e36969;
+    --shadow: 0 10px 30px rgba(0,0,0,0.04);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    min-height: 100vh;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: "Fragment Mono", monospace;
+    font-size: 12px;
+  }
+
+  button, input, select {
+    font: inherit;
+  }
+
+  button { cursor: pointer; }
+
+  .shell {
+    width: min(100%, 1160px);
+    margin: 0 auto;
+    padding: 34px 28px 70px;
+  }
+
+  .topbar {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 20px;
+    margin-bottom: 34px;
+  }
+
+  .brand {
+    font-family: "Victor Mono", monospace;
+    font-size: clamp(22px, 3vw, 34px);
+    font-weight: 500;
+    letter-spacing: -0.07em;
+    text-transform: uppercase;
+    line-height: 1;
+  }
+
+  .subtitle {
+    margin-top: 9px;
+    color: var(--muted);
+    font-size: 11px;
+    letter-spacing: -0.04em;
+  }
+
+  .nav {
+    display: flex;
+    gap: 22px;
+    align-items: center;
+    padding-top: 7px;
+    white-space: nowrap;
+  }
+
+  .nav-btn {
+    border: 0;
+    background: transparent;
+    color: var(--ink);
+    font-size: 10px;
+    letter-spacing: -0.04em;
+    padding: 4px 0;
+    border-bottom: 1px solid transparent;
+  }
+
+  .nav-btn:hover,
+  .nav-btn.active {
+    border-bottom-color: var(--ink);
+  }
+
+  .flash {
+    margin-bottom: 18px;
+    padding: 10px 16px;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    background: #fff;
+    color: var(--ink);
+    box-shadow: var(--shadow);
+  }
+
+  .flash-error { border-color: #efadad; color: #b64242; }
+  .flash-warn { border-color: #dcc178; color: #8a6514; }
+
+  .page-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 22px;
+  }
+
+  .section-title {
+    font-family: "Victor Mono", monospace;
+    font-size: 18px;
+    font-weight: 500;
+    letter-spacing: -0.08em;
+    text-transform: uppercase;
+  }
+
+  .helper-text {
+    color: var(--muted);
+    line-height: 1.55;
+    margin-bottom: 16px;
+  }
+
+  .pill-row,
+  .toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+  }
+
+  .toolbar {
+    margin-bottom: 26px;
+  }
+
+  .pill,
+  .btn,
+  .input,
+  .select {
+    border: 1px solid var(--line);
+    background: var(--white);
+    color: var(--ink);
+    border-radius: 999px;
+    height: 30px;
+    padding: 0 16px;
+    font-size: 10px;
+    letter-spacing: -0.04em;
+    outline: none;
+  }
+
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 74px;
+  }
+
+  .pill.active,
+  .btn-dark {
+    background: var(--dark);
+    color: #fff;
+    border-color: var(--dark);
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .btn:hover { background: #eeeeeb; }
+  .btn-dark:hover { background: #302f2f; }
+  .btn-danger { border-color: #efb3b3; color: var(--danger); }
+  .btn-danger:hover { background: #fff0f0; }
+  .btn-sm { height: 26px; padding: 0 12px; font-size: 9px; }
+
+  .input,
+  .select {
+    height: 30px;
+    min-width: 120px;
+  }
+
+  .search { margin-left: auto; min-width: 210px; }
+
+  .card,
+  .panel,
+  .inline-form {
+    background: var(--white);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    box-shadow: var(--shadow);
+  }
+
+  .card { padding: 16px; }
+
+  .inline-form {
+    display: grid;
+    grid-template-columns: auto 1fr 150px 120px 110px auto auto;
+    gap: 8px;
+    align-items: center;
+    padding: 8px 10px;
+    margin-bottom: 24px;
+    background: #fff;
+  }
+
+  .inline-form.compact {
+    grid-template-columns: auto minmax(180px, 1fr) 120px auto;
+  }
+
+  .form-label {
+    font-family: "Victor Mono", monospace;
+    font-size: 15px;
+    letter-spacing: -0.08em;
+    text-transform: uppercase;
+    padding-left: 8px;
+  }
+
+  .check-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    color: var(--ink);
+    font-size: 9px;
+    text-transform: uppercase;
+  }
+
+  .check-wrap label {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  input[type="checkbox"] { accent-color: var(--dark); }
+
+  .empty {
+    color: #aaa3a0;
+    text-align: center;
+    padding: 36px 10px;
+    border: 1px dashed var(--soft-line);
+    border-radius: 14px;
+    background: rgba(255,255,255,0.55);
+  }
+
+  .error-text { color: var(--danger); margin: -12px 0 18px 8px; }
+
+  /* Home / leaderboard */
+  .fam-stack { display: grid; gap: 22px; }
+  .fam-card {
+    border-radius: 0;
+    border: 0;
+    padding: 16px 18px 14px;
+    position: relative;
+  }
+
+  .fam-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+
+  .fam-title,
+  .points-big {
+    font-family: "Victor Mono", monospace;
+    font-weight: 500;
+    font-size: 17px;
+    letter-spacing: -0.08em;
+    text-transform: uppercase;
+  }
+
+  .bar-wrap {
+    height: 10px;
+    border-radius: 99px;
+    background: rgba(255,255,255,0.75);
+    overflow: hidden;
+    margin-bottom: 13px;
+  }
+
+  .bar { height: 100%; border-radius: 99px; transition: width .35s ease; }
+
+  .mini-members {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+  }
+
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }
+  .mini-chip { display: inline-flex; align-items: center; gap: 4px; font-size: 8px; color: var(--muted); }
+
+  .avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--dark);
+    color: #fff;
+    flex: 0 0 auto;
+    font-family: "Victor Mono", monospace;
+    font-size: 11px;
+    letter-spacing: -0.06em;
+  }
+
+  .avatar-sm { width: 20px; height: 20px; font-size: 7px; }
+  .avatar-lg { width: 62px; height: 62px; font-size: 18px; }
+
+  /* Rows */
+  .rows { display: grid; gap: 14px; }
+
+  .member-row,
+  .task-row,
+  .semester-row,
+  .settings-row,
+  .log-row {
+    background: var(--white);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    min-height: 58px;
+    padding: 12px 14px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    box-shadow: var(--shadow);
+  }
+
+  .member-row.clickable { cursor: pointer; }
+  .member-row.clickable:hover { background: #fbfbfa; }
+
+  .main-info { flex: 1; min-width: 0; }
+  .member-name,
+  .row-title {
+    font-family: "Victor Mono", monospace;
+    font-size: 17px;
+    font-weight: 500;
+    letter-spacing: -0.08em;
+    text-transform: uppercase;
+  }
+
+  .member-sub,
+  .row-sub { color: var(--muted); margin-top: 5px; font-size: 9px; }
+
+  .tag {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 16px;
+    padding: 0 8px;
+    border: 1px solid var(--line);
+    border-radius: 99px;
+    font-size: 7px;
+    color: var(--ink);
+    background: #fff;
+    margin-right: 5px;
+    text-transform: uppercase;
+  }
+
+  .row-points {
+    font-family: "Victor Mono", monospace;
+    font-size: 15px;
+    letter-spacing: -0.08em;
+    white-space: nowrap;
+  }
+
+  .row-actions { display: flex; align-items: center; gap: 8px; }
+
+  .icon-x,
+  .fab {
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .icon-x {
+    width: 28px;
+    height: 28px;
+    border: 1px solid #efb3b3;
+    background: #fff;
+    color: var(--danger);
+  }
+
+  .fab {
+    position: fixed;
+    right: max(28px, calc((100vw - 1160px)/2 + 28px));
+    bottom: 34px;
+    width: 58px;
+    height: 58px;
+    border: 0;
+    background: var(--dark);
+    color: #fff;
+    font-size: 30px;
+    box-shadow: 0 14px 28px rgba(0,0,0,.18);
+  }
+
+  /* Profile */
+  .profile-card { padding: 24px; }
+  .profile-top { display: flex; align-items: center; gap: 18px; margin-bottom: 24px; }
+  .profile-name {
+    font-family: "Victor Mono", monospace;
+    font-size: 34px;
+    line-height: 1;
+    font-weight: 500;
+    letter-spacing: -0.09em;
+    text-transform: uppercase;
+  }
+  .profile-meta { color: var(--muted); margin-top: 8px; }
+  .profile-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin: 20px 0; }
+  .profile-stat { border: 1px solid var(--line); border-radius: 12px; padding: 12px; background: #fbfbfa; }
+  .profile-label { font-size: 8px; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
+  .profile-value { font-family: "Victor Mono", monospace; font-size: 14px; letter-spacing: -0.07em; text-transform: uppercase; }
+
+  table { width: 100%; border-collapse: collapse; }
+  th { text-align: left; color: var(--muted); font-size: 8px; text-transform: uppercase; font-weight: 400; padding: 9px 8px; border-bottom: 1px solid var(--soft-line); }
+  td { padding: 10px 8px; border-bottom: 1px solid #efedeb; font-size: 10px; }
+  tr:last-child td { border-bottom: 0; }
+
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .danger-zone { margin-top: 24px; border-color: #efb3b3; background: #fff8f8; }
+
+  @media (max-width: 850px) {
+    .topbar, .page-head { flex-direction: column; align-items: stretch; }
+    .nav { overflow-x: auto; gap: 16px; padding-bottom: 4px; }
+    .inline-form, .inline-form.compact { grid-template-columns: 1fr; border-radius: 18px; }
+    .form-label { padding-left: 0; }
+    .search { margin-left: 0; min-width: 100%; }
+    .member-row, .task-row, .semester-row, .settings-row, .log-row { align-items: flex-start; flex-wrap: wrap; }
+    .row-actions { width: 100%; justify-content: flex-end; }
+    .profile-grid, .two-col { grid-template-columns: 1fr; }
+  }
 </style>
 </head>
 <body>
@@ -42,71 +443,499 @@ button,input,select{font:inherit}
 <script>
 const { useState, useEffect } = React;
 const h = React.createElement;
-const STORAGE_KEY = "innovative_design_tracker_fall2026_v1";
+
 const FAM_META = [
-  { key:"fam1", defaultName:"Fam 1", bg:"var(--blue)", bar:"var(--blueBar)" },
-  { key:"fam2", defaultName:"Fam 2", bg:"var(--gold)", bar:"var(--goldBar)" },
-  { key:"fam3", defaultName:"Fam 3", bg:"var(--green)", bar:"var(--greenBar)" },
-  { key:"fam4", defaultName:"Fam 4", bg:"var(--pink)", bar:"var(--pinkBar)" }
+  { key: "fam1", bg: "#dce8ff", text: "#4f6fae", bar: "#8fa8ed", defaultName: "Maple Fam" },
+  { key: "fam2", bg: "#fbf1de", text: "#8f7450", bar: "#b39a71", defaultName: "Willow Fam" },
+  { key: "fam3", bg: "#e3f9df", text: "#5f8e5d", bar: "#79ae74", defaultName: "Cypress Fam" },
+  { key: "fam4", bg: "#ffe4e3", text: "#9e6667", bar: "#c78789", defaultName: "Aspen Fam" }
 ];
+
+const STORAGE_KEY = "innovative_design_tracker_layout_v1";
+
+function uid() { return Math.random().toString(36).slice(2, 9); }
+function today() { return new Date().toISOString().slice(0, 10); }
+function initials(name) { return (name || "?").split(" ").map(w => w[0] || "").join("").slice(0, 2).toUpperCase(); }
+function getFamMeta(key) { return FAM_META.find(f => f.key === key) || FAM_META[0]; }
+function loadState() { try { const d = localStorage.getItem(STORAGE_KEY); return d ? JSON.parse(d) : null; } catch { return null; } }
+function saveState(s) { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(s)); } catch {} }
+
 const DEFAULT_STATE = {
-  semesters:[{id:"fall2026",name:"Fall 2026"}], activeSem:"fall2026",
-  famNames:{ fall2026:{ fam1:"Fam 1", fam2:"Fam 2", fam3:"Fam 3", fam4:"Fam 4" } },
-  tasks:[], members:[], completions:[]
+  semesters: [{ id: "s1", name: "Spring 2026" }],
+  activeSem: "s1",
+  famNames: { s1: { fam1: "Maple Fam", fam2: "Willow Fam", fam3: "Cypress Fam", fam4: "Aspen Fam" } },
+  tasks: [],
+  members: [],
+  completions: []
 };
-function uid(){return Math.random().toString(36).slice(2,9)}
-function today(){return new Date().toISOString().slice(0,10)}
-function initials(name){return name.split(" ").map(w=>w[0]||"").join("").slice(0,2).toUpperCase()||"?"}
-function getFamMeta(key){return FAM_META.find(f=>f.key===key)||FAM_META[0]}
-function loadState(){try{const d=localStorage.getItem(STORAGE_KEY);return d?JSON.parse(d):null}catch{return null}}
-function saveState(s){try{localStorage.setItem(STORAGE_KEY,JSON.stringify(s))}catch{}}
-function App(){
-  const [state,setState]=useState(()=>loadState()||DEFAULT_STATE);
-  const [tab,setTab]=useState("home");
-  const [flash,setFlash]=useState(null);
-  function update(fn){setState(prev=>{const next=fn(prev);saveState(next);return next})}
-  function showFlash(msg,type="success"){setFlash({msg,type});setTimeout(()=>setFlash(null),2600)}
-  const activeSem=state.semesters.find(s=>s.id===state.activeSem)||state.semesters[0];
-  const famNames=state.famNames[state.activeSem]||{};
-  function getFamName(famKey,semId=state.activeSem){const names=state.famNames[semId]||{};return names[famKey]||getFamMeta(famKey).defaultName}
-  function getMemberFam(member,semId=state.activeSem){return (member.famBySem||{})[semId]||null}
-  function memberPts(memberId,semId=state.activeSem){return state.completions.filter(c=>c.memberId===memberId&&c.semId===semId).reduce((sum,c)=>{const t=state.tasks.find(x=>x.id===c.taskId);return sum+(t?t.points:0)},0)}
-  function lifetimePts(memberId){return state.semesters.reduce((sum,s)=>sum+memberPts(memberId,s.id),0)}
-  function famPts(famKey){return state.members.filter(m=>getMemberFam(m)===famKey).reduce((sum,m)=>sum+memberPts(m.id),0)}
-  const famsRanked=[...FAM_META].map(f=>({...f,displayName:getFamName(f.key),pts:famPts(f.key)})).sort((a,b)=>b.pts-a.pts);
-  const maxPts=Math.max(1,...famsRanked.map(f=>f.pts));
-  const shared={state,update,showFlash,activeSem,famNames,getFamName,getMemberFam,memberPts,lifetimePts,famPts,famsRanked,maxPts,setTab};
-  const tabs=[["home","Home"],["members","Members"],["tasks","Tasks"],["log","Log Points"],["settings","Settings"]];
-  return h("div",{className:"shell"},
-    h("div",{className:"topbar"},
-      h("div",{className:"app-title"},"Innovative Design at USC"),
-      h("div",{className:"nav"},tabs.map(([key,label])=>h("button",{key,className:`nav-btn${tab===key?" active":""}`,onClick:()=>setTab(key)},label)))
+
+function App() {
+  const [state, setState] = useState(() => loadState() || DEFAULT_STATE);
+  const [tab, setTab] = useState("home");
+  const [flash, setFlash] = useState(null);
+
+  function update(fn) {
+    setState(prev => {
+      const next = fn(prev);
+      saveState(next);
+      return next;
+    });
+  }
+
+  function showFlash(msg, type = "success") {
+    setFlash({ msg, type });
+    setTimeout(() => setFlash(null), 2500);
+  }
+
+  const activeSem = state.semesters.find(s => s.id === state.activeSem) || state.semesters[0];
+  const famNames = state.famNames[state.activeSem] || {};
+
+  function getFamName(famKey, semId = state.activeSem) {
+    const names = state.famNames[semId] || {};
+    return names[famKey] || getFamMeta(famKey).defaultName;
+  }
+
+  function getMemberFam(member, semId = state.activeSem) {
+    return (member.famBySem || {})[semId] || null;
+  }
+
+  function memberPts(memberId, semId = state.activeSem) {
+    return state.completions
+      .filter(c => c.memberId === memberId && c.semId === semId)
+      .reduce((sum, c) => {
+        const task = state.tasks.find(t => t.id === c.taskId);
+        return sum + (task ? Number(task.points) : 0);
+      }, 0);
+  }
+
+  function famPts(famKey) {
+    return state.members
+      .filter(m => getMemberFam(m) === famKey)
+      .reduce((sum, m) => sum + memberPts(m.id), 0);
+  }
+
+  const famsRanked = [...FAM_META]
+    .map(f => ({ ...f, displayName: getFamName(f.key), pts: famPts(f.key) }))
+    .sort((a, b) => b.pts - a.pts);
+  const maxPts = Math.max(1, ...famsRanked.map(f => f.pts));
+
+  const shared = { state, update, showFlash, activeSem, famNames, getFamName, getMemberFam, memberPts, famPts, famsRanked, maxPts };
+  const tabs = [["home", "Home"], ["members", "Members"], ["tasks", "Tasks"], ["log", "Log Points"], ["settings", "Settings"]];
+
+  return h("div", { className: "shell" },
+    h("header", { className: "topbar" },
+      h("div", null,
+        h("div", { className: "brand" }, "Innovative Design at USC"),
+        h("div", { className: "subtitle" }, activeSem.name + " · " + state.members.length + " members")
+      ),
+      h("nav", { className: "nav" }, tabs.map(([id, label]) =>
+        h("button", { key: id, className: "nav-btn" + (tab === id ? " active" : ""), onClick: () => setTab(id) }, label)
+      ))
     ),
-    flash&&h("div",{className:`alert ${flash.type==="error"?"alert-error":""}`},flash.msg),
-    tab!=="tasks"&&tab!=="settings"&&h(SemPicker,{state,update}),
-    tab==="home"&&h(Home,shared), tab==="members"&&h(Members,shared), tab==="tasks"&&h(Tasks,shared), tab==="log"&&h(LogPoints,shared), tab==="settings"&&h(Settings,shared)
-  )
+    flash && h("div", { className: "flash flash-" + flash.type }, flash.msg),
+    tab === "home" && h(Home, shared),
+    tab === "members" && h(Members, shared),
+    tab === "tasks" && h(Tasks, shared),
+    tab === "log" && h(LogPoints, shared),
+    tab === "settings" && h(Settings, shared)
+  );
 }
-function SemPicker({state,update}){return h("div",{className:"sem-chips"},state.semesters.map(s=>h("button",{key:s.id,className:`btn sem-chip${s.id===state.activeSem?" active":""}`,onClick:()=>update(p=>({...p,activeSem:s.id}))},s.name)))}
-function Home({state,activeSem,famsRanked,maxPts,getMemberFam,memberPts}){return h("div",{className:"page"},h("div",{className:"leaderboard"},famsRanked.map(f=>{const meta=getFamMeta(f.key);const members=state.members.filter(m=>getMemberFam(m)===f.key).sort((a,b)=>memberPts(b.id)-memberPts(a.id));return h("div",{key:f.key,className:"fam-card",style:{background:meta.bg}},h("div",{className:"fam-head"},h("div",{className:"fam-name"},f.displayName),h("div",{className:"fam-points"},f.pts+" Points")),h("div",{className:"bar-wrap"},h("div",{className:"bar",style:{width:Math.round(f.pts/maxPts*100)+"%",background:meta.bar}})),members.length?h("div",{className:"member-chips"},members.slice(0,4).map(m=>h("span",{className:"chip",key:m.id},h("span",{className:"avatar",style:{background:meta.bar}},initials(m.name)),m.name+" · "+memberPts(m.id)+" points")),members.length>4&&h("span",{className:"chip-more"},"+"+(members.length-4))):h("div",{className:"muted"},"No members assigned yet"));})),state.members.length===0&&h("div",{className:"empty"},"Start by adding members, tasks, and point logs."))}
-function Members({state,update,showFlash,activeSem,getFamName,getMemberFam,memberPts,lifetimePts}){
-  const [query,setQuery]=useState(""); const [sort,setSort]=useState("points"); const [famFilter,setFamFilter]=useState("all"); const [driverFilter,setDriverFilter]=useState("all"); const [hexFilter,setHexFilter]=useState("all"); const [selected,setSelected]=useState(null); const [modal,setModal]=useState(false);
-  function addMember(data){update(s=>({...s,members:[...s.members,{id:uid(),name:data.name.trim(),hexClass:data.hexClass.trim(),driver:data.driver,fanHead:data.fanHead,famBySem:{[s.activeSem]:data.fam}}]}));showFlash(data.name.trim()+" added");setModal(false)}
-  function removeMember(id){if(!confirm("Remove this member and their point history?"))return;update(s=>({...s,members:s.members.filter(m=>m.id!==id),completions:s.completions.filter(c=>c.memberId!==id)}));showFlash("Member removed")}
-  const hexes=[...new Set(state.members.map(m=>m.hexClass).filter(Boolean))];
-  let members=state.members.filter(m=>m.name.toLowerCase().includes(query.toLowerCase()));
-  if(famFilter!=="all")members=members.filter(m=>getMemberFam(m)===famFilter); if(driverFilter!=="all")members=members.filter(m=>String(!!m.driver)===driverFilter); if(hexFilter!=="all")members=members.filter(m=>m.hexClass===hexFilter);
-  members.sort((a,b)=>sort==="name"?a.name.localeCompare(b.name):memberPts(b.id)-memberPts(a.id));
-  const selectedMember=state.members.find(m=>m.id===selected); if(selectedMember)return h(MemberProfile,{member:selectedMember,state,getFamName,getMemberFam,memberPts,lifetimePts,onBack:()=>setSelected(null)});
-  return h("div",{className:"page"},h("div",{className:"toolbar"},h("select",{value:sort,onChange:e=>setSort(e.target.value)},h("option",{value:"points"},"Sort by points"),h("option",{value:"name"},"Sort by name")),h("select",{value:famFilter,onChange:e=>setFamFilter(e.target.value)},h("option",{value:"all"},"Fam"),FAM_META.map(f=>h("option",{key:f.key,value:f.key},getFamName(f.key)))),h("select",{value:hexFilter,onChange:e=>setHexFilter(e.target.value)},h("option",{value:"all"},"Hex class"),hexes.map(x=>h("option",{key:x,value:x},x))),h("select",{value:driverFilter,onChange:e=>setDriverFilter(e.target.value)},h("option",{value:"all"},"Driver"),h("option",{value:"true"},"Drivers"),h("option",{value:"false"},"Non-drivers")),h("input",{className:"search",placeholder:"Search",value:query,onChange:e=>setQuery(e.target.value)})),h("div",{className:"member-list"},members.length===0&&h("div",{className:"empty"},"No members yet."),members.map(m=>{const fk=getMemberFam(m);const meta=fk?getFamMeta(fk):null;return h("div",{className:"member-row",key:m.id,onClick:()=>setSelected(m.id)},h("div",{className:"avatar",style:{background:meta?meta.bar:"#444"}},initials(m.name)),h("div",{className:"member-main"},h("div",{className:"member-name"},m.name),h("div",{className:"member-sub"},h("span",{className:"mini-tag"},fk?getFamName(fk):"Unassigned"),h("span",{className:"mini-tag"},m.hexClass||"No hex"),m.fanHead&&h("span",{className:"mini-tag"},"Fam Head"),m.driver&&h("span",{className:"mini-tag"},"Driver"))),h("div",{className:"member-points"},memberPts(m.id)+" Points"),h("div",{className:"task-actions",onClick:e=>e.stopPropagation()},h("button",{className:"btn btn-mini",onClick:()=>setSelected(m.id)},"Profile"),h("button",{className:"btn btn-mini btn-danger",onClick:()=>removeMember(m.id)},"×")));})),h("button",{className:"floating-add",onClick:()=>setModal(true)},"+"),modal&&h(AddMemberModal,{onClose:()=>setModal(false),onSave:addMember,getFamName}))
+
+function SemPills({ state, update }) {
+  return h("div", { className: "pill-row" }, state.semesters.map(s =>
+    h("button", { key: s.id, className: "pill" + (s.id === state.activeSem ? " active" : ""), onClick: () => update(p => ({ ...p, activeSem: s.id })) }, s.name)
+  ));
 }
-function AddMemberModal({onClose,onSave,getFamName}){const [name,setName]=useState("");const [hex,setHex]=useState("");const [fam,setFam]=useState("fam1");const [fanHead,setFanHead]=useState(false);const [driver,setDriver]=useState(false);function submit(){if(!name.trim()){alert("Name is required");return}onSave({name,hexClass:hex,fam,fanHead,driver})}return h("div",{className:"modal-backdrop"},h("div",{className:"modal"},h("span",{className:"modal-title"},"Add Member"),h("input",{placeholder:"Full name",value:name,onChange:e=>setName(e.target.value)}),h("input",{placeholder:"Hex class",value:hex,onChange:e=>setHex(e.target.value)}),h("select",{value:fam,onChange:e=>setFam(e.target.value)},FAM_META.map(f=>h("option",{key:f.key,value:f.key},getFamName(f.key)))),h("label",null,h("input",{type:"checkbox",checked:fanHead,onChange:e=>setFanHead(e.target.checked),style:{width:12,height:12,padding:0}}),"Fam Head"),h("label",null,h("input",{type:"checkbox",checked:driver,onChange:e=>setDriver(e.target.checked),style:{width:12,height:12,padding:0}}),"Driver"),h("button",{className:"btn",onClick:submit},"Add Member"),h("button",{className:"close",onClick:onClose},"×"))) }
-function MemberProfile({member,state,getFamName,getMemberFam,memberPts,lifetimePts,onBack}){const fk=getMemberFam(member);const meta=fk?getFamMeta(fk):null;const logs=state.completions.filter(c=>c.memberId===member.id).sort((a,b)=>b.date.localeCompare(a.date));return h("div",{className:"page"},h("button",{className:"btn",onClick:onBack,style:{marginBottom:16}},"← Back"),h("div",{className:"profile-card"},h("div",{className:"profile-top"},h("div",{className:"avatar avatar-lg",style:{background:meta?meta.bar:"#444"}},initials(member.name)),h("div",null,h("div",{className:"profile-name"},member.name),h("div",{className:"profile-meta"},(member.hexClass||"No hex class")+" · "+(member.driver?"Driver":"Not a driver")))),h("div",{className:"profile-grid"},stat("Name",member.name),stat("Hex Class",member.hexClass||"—"),stat("Current Fam",fk?getFamName(fk):"Unassigned"),stat("Driver",member.driver?"Yes":"No"),stat("Fam Head",member.fanHead?"Yes":"No"),stat("Lifetime Points",lifetimePts(member.id)+" pts")),h("div",{className:"divider"}),h("div",{className:"card-title"},"Points by semester"),h("table",{className:"table"},h("thead",null,h("tr",null,h("th",null,"Semester"),h("th",null,"Fam"),h("th",null,"Points"))),h("tbody",null,state.semesters.map(s=>{const fam=getMemberFam(member,s.id);return h("tr",{key:s.id},h("td",null,s.name),h("td",null,fam?getFamName(fam,s.id):"Unassigned"),h("td",null,memberPts(member.id,s.id)+" pts"))}))),h("div",{className:"divider"}),h("div",{className:"card-title"},"Point log"),logs.length===0?h("div",{className:"empty"},"No points logged yet"):h("table",{className:"table"},h("thead",null,h("tr",null,h("th",null,"Date"),h("th",null,"Semester"),h("th",null,"Task"),h("th",null,"Points"))),h("tbody",null,logs.map(c=>{const t=state.tasks.find(x=>x.id===c.taskId);const s=state.semesters.find(x=>x.id===c.semId);return h("tr",{key:c.id},h("td",null,c.date),h("td",null,s?s.name:"Deleted semester"),h("td",null,t?t.name:"Deleted task"),h("td",null,t?"+"+t.points:"—"))}))))))}
-function stat(label,value){return h("div",{className:"profile-stat"},h("div",{className:"profile-label"},label),h("div",{className:"profile-value"},value))}
-function Tasks({state,update,showFlash}){const [name,setName]=useState("");const [pts,setPts]=useState("");const [edit,setEdit]=useState(null);const [editName,setEditName]=useState("");const [editPts,setEditPts]=useState("");function add(){if(!name.trim()||!pts||Number(pts)<=0){showFlash("Enter a task and point value","error");return}update(s=>({...s,tasks:[...s.tasks,{id:uid(),name:name.trim(),points:Number(pts)}]}));setName("");setPts("");showFlash("Task added")}function remove(id){if(!confirm("Delete this task and all matching point logs?"))return;update(s=>({...s,tasks:s.tasks.filter(t=>t.id!==id),completions:s.completions.filter(c=>c.taskId!==id)}));showFlash("Task deleted")}function startEdit(t){setEdit(t.id);setEditName(t.name);setEditPts(String(t.points))}function saveEdit(){if(!editName.trim()||!editPts||Number(editPts)<=0)return;update(s=>({...s,tasks:s.tasks.map(t=>t.id===edit?{...t,name:editName.trim(),points:Number(editPts)}:t)}));setEdit(null);showFlash("Task updated")}return h("div",{className:"page"},h("div",{className:"task-create"},h("span",{className:"label"},"Add Task"),h("input",{placeholder:"Task Name",value:name,onChange:e=>setName(e.target.value),onKeyDown:e=>e.key==="Enter"&&add()}),h("input",{placeholder:"Point Value",type:"number",value:pts,onChange:e=>setPts(e.target.value),onKeyDown:e=>e.key==="Enter"&&add()}),h("button",{className:"btn btn-dark btn-mini",onClick:add},"Add")),state.tasks.length===0&&h("div",{className:"empty"},"No tasks yet."),state.tasks.map(t=>h("div",{className:"task-row",key:t.id},edit===t.id?h(React.Fragment,null,h("input",{className:"edit-input",value:editName,onChange:e=>setEditName(e.target.value)}),h("input",{className:"edit-input",type:"number",value:editPts,onChange:e=>setEditPts(e.target.value),style:{maxWidth:110}})):h(React.Fragment,null,h("div",{className:"task-name"},t.name),h("div",{className:"task-points"},t.points+" Points")),h("div",{className:"task-actions"},edit===t.id?h(React.Fragment,null,h("button",{className:"btn btn-mini btn-dark",onClick:saveEdit},"Save"),h("button",{className:"btn btn-mini",onClick:()=>setEdit(null)},"Cancel")):h(React.Fragment,null,h("button",{className:"btn btn-mini btn-dark",onClick:()=>startEdit(t)},"Edit"),h("button",{className:"btn btn-mini btn-danger",onClick:()=>remove(t.id)},"×"))))))}
-function LogPoints({state,update,showFlash,activeSem,getFamName,getMemberFam}){const [memberId,setMemberId]=useState("");const [taskId,setTaskId]=useState("");const [date,setDate]=useState(today());function log(){if(!memberId||!taskId||!date){showFlash("Fill in all fields","error");return}update(s=>({...s,completions:[...s.completions,{id:uid(),memberId,taskId,date,semId:s.activeSem}]}));const t=state.tasks.find(x=>x.id===taskId);const m=state.members.find(x=>x.id===memberId);showFlash("+"+(t?t.points:0)+" points for "+(m?m.name:"member"));setTaskId("")}const assigned=state.members.filter(m=>getMemberFam(m));const recent=state.completions.filter(c=>c.semId===state.activeSem).sort((a,b)=>b.date.localeCompare(a.date)).slice(0,20);return h("div",{className:"page"},h("p",{className:"section-title"},"Log Points — "+activeSem.name),h("div",{className:"card"},h("div",{className:"form-row"},h("div",{className:"field"},h("label",null,"Member"),h("select",{value:memberId,onChange:e=>setMemberId(e.target.value)},h("option",{value:""},"Select member"),assigned.map(m=>h("option",{key:m.id,value:m.id},m.name+" ("+getFamName(getMemberFam(m))+")")))),h("div",{className:"field"},h("label",null,"Task"),h("select",{value:taskId,onChange:e=>setTaskId(e.target.value)},h("option",{value:""},"Select task"),state.tasks.map(t=>h("option",{key:t.id,value:t.id},t.name+" (+"+t.points+")")))),h("div",{className:"field"},h("label",null,"Date"),h("input",{type:"date",value:date,onChange:e=>setDate(e.target.value)})),h("button",{className:"btn btn-dark",onClick:log},"Log Points"))),h("div",{className:"card-title"},"Recent Activity"),recent.length===0?h("div",{className:"empty"},"No activity logged yet."):h("table",{className:"table"},h("thead",null,h("tr",null,h("th",null,"Date"),h("th",null,"Member"),h("th",null,"Task"),h("th",null,"Points"))),h("tbody",null,recent.map(c=>{const m=state.members.find(x=>x.id===c.memberId);const t=state.tasks.find(x=>x.id===c.taskId);return h("tr",{key:c.id},h("td",null,c.date),h("td",null,m?m.name:"Deleted"),h("td",null,t?t.name:"Deleted"),h("td",null,t?"+"+t.points:"—"))}))))}
-function Settings({state,update,showFlash,getFamName,getMemberFam}){const [sub,setSub]=useState("fams");const [newSem,setNewSem]=useState("");const [rename,setRename]=useState({});const [famNames,setFamNames]=useState({});const [reassign,setReassign]=useState({});useEffect(()=>{const names={};FAM_META.forEach(f=>names[f.key]=getFamName(f.key));setFamNames(names);const r={};state.members.forEach(m=>r[m.id]=getMemberFam(m)||"");setReassign(r);const rn={};state.semesters.forEach(s=>rn[s.id]=s.name);setRename(rn)},[state.activeSem,state.semesters.length,state.members.length]);function saveFams(){update(s=>({...s,famNames:{...s.famNames,[s.activeSem]:{...famNames}}}));showFlash("Fam names saved")}function saveReassign(){update(s=>({...s,members:s.members.map(m=>({...m,famBySem:{...(m.famBySem||{}),[s.activeSem]:reassign[m.id]||null}}))}));showFlash("Assignments saved")}function addSem(){if(!newSem.trim()){showFlash("Enter a semester name","error");return}const id=uid();update(s=>({...s,semesters:[...s.semesters,{id,name:newSem.trim()}],activeSem:id,famNames:{...s.famNames,[id]:{...s.famNames[s.activeSem]}},members:s.members.map(m=>({...m,famBySem:{...(m.famBySem||{}),[id]:(m.famBySem||{})[s.activeSem]||null}}))}));setNewSem("");setSub("reassign");showFlash("Semester created")}function renameSem(id){const name=(rename[id]||"").trim();if(!name)return;update(s=>({...s,semesters:s.semesters.map(x=>x.id===id?{...x,name}:x)}));showFlash("Semester renamed")}function deleteSem(id){if(state.semesters.length<=1){showFlash("Can't delete the only semester","error");return}if(!confirm("Delete this semester? Member profiles stay saved."))return;update(s=>{const famNames={...s.famNames};delete famNames[id];const remaining=s.semesters.filter(x=>x.id!==id);return {...s,semesters:remaining,activeSem:s.activeSem===id?remaining[0].id:s.activeSem,famNames,members:s.members.map(m=>{const fs={...(m.famBySem||{})};delete fs[id];return {...m,famBySem:fs}}),completions:s.completions.filter(c=>c.semId!==id)}});showFlash("Semester deleted")}function resetSem(id){if(!confirm("Reset this semester? Points and fam assignments for this semester only will be cleared."))return;update(s=>({...s,completions:s.completions.filter(c=>c.semId!==id),members:s.members.map(m=>{const fs={...(m.famBySem||{})};delete fs[id];return {...m,famBySem:fs}})}));showFlash("Semester reset")}function resetAll(){if(!confirm("Reset the entire tracker? This deletes all members, tasks, semesters, and points."))return;localStorage.removeItem(STORAGE_KEY);setTimeout(()=>location.reload(),50)}return h("div",{className:"page"},h(SemPicker,{state,update}),h("div",{className:"subnav"},[["fams","Fam Names"],["reassign","Reassign Fams"],["semesters","Semesters"]].map(([k,l])=>h("button",{className:`btn ${sub===k?"btn-dark":""}`,onClick:()=>setSub(k),key:k},l))),sub==="fams"&&h("div",null,h("p",{className:"muted",style:{marginBottom:14}},"Fam names are placeholders until you decide final names."),h("div",{className:"fam-grid"},FAM_META.map(f=>h("div",{className:"fam-edit-card",key:f.key},h("div",{className:"slot"},h("span",{className:"dot",style:{background:getFamMeta(f.key).bar}}),f.defaultName),h("input",{value:famNames[f.key]||"",onChange:e=>setFamNames(p=>({...p,[f.key]:e.target.value}))})))),h("button",{className:"btn btn-dark",style:{marginTop:14},onClick:saveFams},"Save Fam Names")),sub==="reassign"&&h("div",null,state.members.length===0&&h("div",{className:"empty"},"No members yet."),state.members.map(m=>h("div",{className:"settings-row",key:m.id},h("div",{className:"avatar"},initials(m.name)),h("div",{className:"settings-row-main"},m.name),h("select",{value:reassign[m.id]||"",onChange:e=>setReassign(p=>({...p,[m.id]:e.target.value}))},h("option",{value:""},"Unassigned"),FAM_META.map(f=>h("option",{key:f.key,value:f.key},getFamName(f.key))))))),state.members.length>0&&h("button",{className:"btn btn-dark",onClick:saveReassign},"Save Assignments")),sub==="semesters"&&h("div",null,h("div",{className:"card"},h("div",{className:"card-title"},"New Semester"),h("div",{className:"form-row"},h("input",{placeholder:"e.g. Spring 2027",value:newSem,onChange:e=>setNewSem(e.target.value),onKeyDown:e=>e.key==="Enter"&&addSem()}),h("button",{className:"btn btn-dark",onClick:addSem},"Create"))),state.semesters.map(s=>h("div",{className:"settings-row",key:s.id},h("div",{className:"settings-row-main"},h("div",null,s.name+(s.id===state.activeSem?" · active":"")),h("input",{style:{marginTop:8,maxWidth:260},value:rename[s.id]||"",onChange:e=>setRename(p=>({...p,[s.id]:e.target.value})),onKeyDown:e=>e.key==="Enter"&&renameSem(s.id)})),h("button",{className:"btn",onClick:()=>renameSem(s.id)},"Rename"),s.id!==state.activeSem&&h("button",{className:"btn",onClick:()=>update(p=>({...p,activeSem:s.id}))},"Switch"),h("button",{className:"btn",onClick:()=>resetSem(s.id)},"Reset"),state.semesters.length>1&&h("button",{className:"btn btn-danger",onClick:()=>deleteSem(s.id)},"Delete"))),h("div",{className:"reset-zone"},h("div",{className:"card-title"},"Danger Zone"),h("p",{className:"muted",style:{marginBottom:12}},"This clears the whole tracker and returns to a blank Fall 2026 setup."),h("button",{className:"btn btn-danger",onClick:resetAll},"Reset Entire Tracker")))))}
-ReactDOM.render(h(App),document.getElementById("root"));
+
+function Home({ state, update, activeSem, famsRanked, maxPts, getMemberFam, memberPts }) {
+  return h("main", null,
+    h("div", { className: "page-head" },
+      h("div", { className: "section-title" }, "Home"),
+      h(SemPills, { state, update })
+    ),
+    state.members.length === 0 && h("div", { className: "empty", style: { marginBottom: 22 } }, "No members yet — add members, assign fams, and log points to build the leaderboard."),
+    h("div", { className: "fam-stack" }, famsRanked.map((fam, i) => {
+      const fc = getFamMeta(fam.key);
+      const members = state.members.filter(m => getMemberFam(m) === fam.key).sort((a, b) => memberPts(b.id) - memberPts(a.id));
+      return h("section", { key: fam.key, className: "fam-card", style: { background: fc.bg, color: fc.text } },
+        h("div", { className: "fam-head" },
+          h("div", { className: "fam-title" }, fam.displayName),
+          h("div", { className: "points-big" }, fam.pts + " Points")
+        ),
+        h("div", { className: "bar-wrap" }, h("div", { className: "bar", style: { width: Math.round(fam.pts / maxPts * 100) + "%", background: fc.bar } })),
+        h("div", { className: "mini-members" },
+          h("div", { className: "chips" }, members.slice(0, 4).map(m =>
+            h("span", { key: m.id, className: "mini-chip" },
+              h("span", { className: "avatar avatar-sm", style: { background: fc.bar, color: "#fff" } }, initials(m.name)),
+              m.name + " · " + memberPts(m.id) + " pts"
+            )
+          )),
+          h("span", { className: "mini-chip" }, members.length + " Members")
+        )
+      );
+    }))
+  );
+}
+
+function MemberProfile({ member, state, update, showFlash, getFamName, getMemberFam, memberPts, onBack }) {
+  const famKey = getMemberFam(member);
+  const famMeta = famKey ? getFamMeta(famKey) : null;
+  const history = state.completions.filter(c => c.memberId === member.id).sort((a, b) => b.date.localeCompare(a.date));
+
+  return h("main", null,
+    h("div", { className: "page-head" },
+      h("button", { className: "btn", onClick: onBack }, "← Back"),
+      h("div", { className: "section-title" }, "Member Profile")
+    ),
+    h("section", { className: "card profile-card" },
+      h("div", { className: "profile-top" },
+        h("div", { className: "avatar avatar-lg", style: { background: famMeta ? famMeta.bar : "#3d3b3b", color: "#fff" } }, initials(member.name)),
+        h("div", null,
+          h("div", { className: "profile-name" }, member.name),
+          h("div", { className: "profile-meta" }, (member.hexClass || "No hex class") + " · " + (member.driver ? "Driver" : "Not a driver") + (member.famHead ? " · Fam Head" : ""))
+        )
+      ),
+      h("div", { className: "profile-grid" },
+        h("div", { className: "profile-stat" }, h("div", { className: "profile-label" }, "Name"), h("div", { className: "profile-value" }, member.name)),
+        h("div", { className: "profile-stat" }, h("div", { className: "profile-label" }, "Hex Class"), h("div", { className: "profile-value" }, member.hexClass || "—")),
+        h("div", { className: "profile-stat" }, h("div", { className: "profile-label" }, "Current Fam"), h("div", { className: "profile-value" }, famKey ? getFamName(famKey) : "Unassigned")),
+        h("div", { className: "profile-stat" }, h("div", { className: "profile-label" }, "Driver"), h("div", { className: "profile-value" }, member.driver ? "Yes" : "No"))
+      ),
+      h("div", { className: "two-col" },
+        h("div", null,
+          h("div", { className: "section-title", style: { fontSize: 15, marginBottom: 8 } }, "Points by Semester"),
+          h("table", null,
+            h("thead", null, h("tr", null, h("th", null, "Semester"), h("th", null, "Fam"), h("th", null, "Points"))),
+            h("tbody", null, state.semesters.map(sem => {
+              const fk = getMemberFam(member, sem.id);
+              return h("tr", { key: sem.id }, h("td", null, sem.name), h("td", null, fk ? getFamName(fk, sem.id) : "Unassigned"), h("td", null, memberPts(member.id, sem.id)));
+            }))
+          )
+        ),
+        h("div", null,
+          h("div", { className: "section-title", style: { fontSize: 15, marginBottom: 8 } }, "Full History"),
+          history.length === 0 ? h("div", { className: "empty" }, "No points logged yet") : h("table", null,
+            h("thead", null, h("tr", null, h("th", null, "Date"), h("th", null, "Task"), h("th", null, "Pts"))),
+            h("tbody", null, history.map(c => {
+              const task = state.tasks.find(t => t.id === c.taskId);
+              return h("tr", { key: c.id }, h("td", null, c.date), h("td", null, task ? task.name : "Deleted task"), h("td", null, task ? "+" + task.points : "—"));
+            }))
+          )
+        )
+      )
+    )
+  );
+}
+
+function Members({ state, update, showFlash, activeSem, getFamName, getMemberFam, memberPts }) {
+  const [name, setName] = useState("");
+  const [hexClass, setHexClass] = useState("");
+  const [fam, setFam] = useState("fam1");
+  const [driver, setDriver] = useState(false);
+  const [famHead, setFamHead] = useState(false);
+  const [selected, setSelected] = useState(null);
+  const [sortBy, setSortBy] = useState("points");
+  const [famFilter, setFamFilter] = useState("all");
+  const [hexFilter, setHexFilter] = useState("all");
+  const [driverFilter, setDriverFilter] = useState("all");
+  const [search, setSearch] = useState("");
+  const [err, setErr] = useState("");
+
+  const selectedMember = state.members.find(m => m.id === selected);
+  if (selectedMember) return h(MemberProfile, { member: selectedMember, state, update, showFlash, getFamName, getMemberFam, memberPts, onBack: () => setSelected(null) });
+
+  function addMember() {
+    if (!name.trim()) { setErr("Full name is required"); return; }
+    const id = uid();
+    update(s => ({ ...s, members: [...s.members, { id, name: name.trim(), hexClass: hexClass.trim(), driver, famHead, famBySem: { [s.activeSem]: fam } }] }));
+    showFlash(name.trim() + " added");
+    setName(""); setHexClass(""); setDriver(false); setFamHead(false); setErr("");
+  }
+
+  function removeMember(id) {
+    const m = state.members.find(x => x.id === id);
+    if (!window.confirm("Remove " + (m ? m.name : "this member") + "? Their point history will also be removed.")) return;
+    update(s => ({ ...s, members: s.members.filter(m => m.id !== id), completions: s.completions.filter(c => c.memberId !== id) }));
+    showFlash("Member removed");
+  }
+
+  const hexOptions = Array.from(new Set(state.members.map(m => m.hexClass).filter(Boolean))).sort();
+  let list = [...state.members];
+  if (famFilter !== "all") list = list.filter(m => getMemberFam(m) === famFilter);
+  if (hexFilter !== "all") list = list.filter(m => (m.hexClass || "") === hexFilter);
+  if (driverFilter === "drivers") list = list.filter(m => m.driver);
+  if (driverFilter === "famHeads") list = list.filter(m => m.famHead);
+  if (search.trim()) list = list.filter(m => (m.name + " " + (m.hexClass || "")).toLowerCase().includes(search.toLowerCase()));
+  list.sort((a, b) => sortBy === "name" ? a.name.localeCompare(b.name) : memberPts(b.id) - memberPts(a.id));
+
+  return h("main", null,
+    h("div", { className: "page-head" }, h("div", { className: "section-title" }, "Members"), h(SemPills, { state, update })),
+    h("div", { className: "toolbar" },
+      h("select", { className: "select", value: sortBy, onChange: e => setSortBy(e.target.value) }, h("option", { value: "points" }, "Sort by"), h("option", { value: "name" }, "Name A-Z")),
+      h("select", { className: "select", value: famFilter, onChange: e => setFamFilter(e.target.value) }, h("option", { value: "all" }, "Fam"), FAM_META.map(f => h("option", { key: f.key, value: f.key }, getFamName(f.key)))),
+      h("select", { className: "select", value: hexFilter, onChange: e => setHexFilter(e.target.value) }, h("option", { value: "all" }, "Hex Class"), hexOptions.map(x => h("option", { key: x, value: x }, x))),
+      h("select", { className: "select", value: driverFilter, onChange: e => setDriverFilter(e.target.value) }, h("option", { value: "all" }, "Driver"), h("option", { value: "drivers" }, "Drivers"), h("option", { value: "famHeads" }, "Fam Heads")),
+      h("input", { className: "input search", placeholder: "Search", value: search, onChange: e => setSearch(e.target.value) })
+    ),
+    h("div", { className: "inline-form" },
+      h("div", { className: "form-label" }, "+"),
+      h("input", { className: "input", placeholder: "Full Name", value: name, onChange: e => setName(e.target.value), onKeyDown: e => e.key === "Enter" && addMember() }),
+      h("input", { className: "input", placeholder: "Hex Class", value: hexClass, onChange: e => setHexClass(e.target.value) }),
+      h("select", { className: "select", value: fam, onChange: e => setFam(e.target.value) }, FAM_META.map(f => h("option", { key: f.key, value: f.key }, getFamName(f.key)))),
+      h("div", { className: "check-wrap" },
+        h("label", null, h("input", { type: "checkbox", checked: famHead, onChange: e => setFamHead(e.target.checked) }), "Fam Head"),
+        h("label", null, h("input", { type: "checkbox", checked: driver, onChange: e => setDriver(e.target.checked) }), "Driver")
+      ),
+      h("button", { className: "btn btn-dark btn-sm", onClick: addMember }, "Add Member"),
+      h("button", { className: "icon-x", onClick: () => { setName(""); setHexClass(""); setDriver(false); setFamHead(false); setErr(""); } }, "×")
+    ),
+    err && h("div", { className: "error-text" }, err),
+    h("div", { className: "rows" },
+      list.length === 0 && h("div", { className: "empty" }, "No matching members yet."),
+      list.map(m => {
+        const fk = getMemberFam(m);
+        const fc = fk ? getFamMeta(fk) : null;
+        return h("div", { key: m.id, className: "member-row clickable", onClick: () => setSelected(m.id) },
+          h("div", { className: "avatar", style: { background: fc ? fc.bar : "#3d3b3b", color: "#fff" } }, initials(m.name)),
+          h("div", { className: "main-info" },
+            h("div", { className: "member-name" }, m.name),
+            h("div", { className: "member-sub" },
+              h("span", { className: "tag" }, fk ? getFamName(fk) : "Unassigned"),
+              h("span", { className: "tag" }, m.hexClass || "No Hex"),
+              m.famHead && h("span", { className: "tag" }, "Fam Head"),
+              m.driver && h("span", { className: "tag" }, "Driver")
+            )
+          ),
+          h("div", { className: "row-points" }, memberPts(m.id) + " Points"),
+          h("div", { className: "row-actions", onClick: e => e.stopPropagation() }, h("button", { className: "btn btn-sm", onClick: () => setSelected(m.id) }, "Profile"), h("button", { className: "icon-x", onClick: () => removeMember(m.id) }, "×"))
+        );
+      })
+    )
+  );
+}
+
+function Tasks({ state, update, showFlash }) {
+  const [name, setName] = useState("");
+  const [pts, setPts] = useState("");
+  const [editing, setEditing] = useState(null);
+  const [editName, setEditName] = useState("");
+  const [editPts, setEditPts] = useState("");
+  const [err, setErr] = useState("");
+
+  function addTask() {
+    if (!name.trim() || !pts || Number(pts) <= 0) { setErr("Add a task name and positive point value"); return; }
+    update(s => ({ ...s, tasks: [...s.tasks, { id: uid(), name: name.trim(), points: Number(pts) }] }));
+    setName(""); setPts(""); setErr(""); showFlash("Task added");
+  }
+  function startEdit(t) { setEditing(t.id); setEditName(t.name); setEditPts(String(t.points)); }
+  function saveEdit(id) {
+    if (!editName.trim() || !editPts || Number(editPts) <= 0) return;
+    update(s => ({ ...s, tasks: s.tasks.map(t => t.id === id ? { ...t, name: editName.trim(), points: Number(editPts) } : t) }));
+    setEditing(null); showFlash("Task updated");
+  }
+  function removeTask(id) {
+    if (!window.confirm("Delete this task? Logged completions for this task will also be removed.")) return;
+    update(s => ({ ...s, tasks: s.tasks.filter(t => t.id !== id), completions: s.completions.filter(c => c.taskId !== id) }));
+    showFlash("Task deleted");
+  }
+
+  return h("main", null,
+    h("div", { className: "page-head" }, h("div", { className: "section-title" }, "Tasks")),
+    h("div", { className: "inline-form compact" },
+      h("div", { className: "form-label" }, "Add Task"),
+      h("input", { className: "input", placeholder: "Task Name", value: name, onChange: e => setName(e.target.value), onKeyDown: e => e.key === "Enter" && addTask() }),
+      h("input", { className: "input", type: "number", min: "1", placeholder: "Point Value", value: pts, onChange: e => setPts(e.target.value), onKeyDown: e => e.key === "Enter" && addTask() }),
+      h("button", { className: "btn btn-dark btn-sm", onClick: addTask }, "Add")
+    ),
+    err && h("div", { className: "error-text" }, err),
+    h("div", { className: "rows" },
+      state.tasks.length === 0 && h("div", { className: "empty" }, "No tasks yet — add tasks like Coffee Chat, Workshop, or Social."),
+      state.tasks.map(t => h("div", { key: t.id, className: "task-row" },
+        editing === t.id ? [
+          h("input", { key: "n", className: "input", value: editName, onChange: e => setEditName(e.target.value) }),
+          h("input", { key: "p", className: "input", type: "number", value: editPts, onChange: e => setEditPts(e.target.value) }),
+          h("div", { key: "a", className: "row-actions" }, h("button", { className: "btn btn-sm btn-dark", onClick: () => saveEdit(t.id) }, "Save"), h("button", { className: "btn btn-sm", onClick: () => setEditing(null) }, "Cancel"))
+        ] : [
+          h("div", { key: "info", className: "main-info" }, h("div", { className: "row-title" }, t.name)),
+          h("div", { key: "pts", className: "row-points" }, t.points + " Points"),
+          h("div", { key: "actions", className: "row-actions" }, h("button", { className: "btn btn-sm btn-dark", onClick: () => startEdit(t) }, "Edit"), h("button", { className: "icon-x", onClick: () => removeTask(t.id) }, "×"))
+        ]
+      ))
+    )
+  );
+}
+
+function LogPoints({ state, update, showFlash, activeSem, getFamName, getMemberFam }) {
+  const [memberId, setMemberId] = useState("");
+  const [taskId, setTaskId] = useState("");
+  const [date, setDate] = useState(today());
+  const [err, setErr] = useState("");
+  const members = state.members.filter(m => getMemberFam(m));
+  const recent = [...state.completions].filter(c => c.semId === state.activeSem).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 14);
+
+  function logPoints() {
+    if (!memberId || !taskId || !date) { setErr("Choose a member, task, and date"); return; }
+    const task = state.tasks.find(t => t.id === taskId);
+    const member = state.members.find(m => m.id === memberId);
+    update(s => ({ ...s, completions: [...s.completions, { id: uid(), memberId, taskId, date, semId: s.activeSem }] }));
+    setTaskId(""); setErr(""); showFlash("+" + task.points + " points logged for " + member.name);
+  }
+
+  return h("main", null,
+    h("div", { className: "page-head" }, h("div", { className: "section-title" }, "Log Points"), h(SemPills, { state, update })),
+    h("div", { className: "inline-form" },
+      h("div", { className: "form-label" }, "+"),
+      h("select", { className: "select", value: memberId, onChange: e => setMemberId(e.target.value) }, h("option", { value: "" }, "Member"), members.map(m => h("option", { key: m.id, value: m.id }, m.name + " — " + getFamName(getMemberFam(m))))),
+      h("select", { className: "select", value: taskId, onChange: e => setTaskId(e.target.value) }, h("option", { value: "" }, "Task"), state.tasks.map(t => h("option", { key: t.id, value: t.id }, t.name + " +" + t.points))),
+      h("input", { className: "input", type: "date", value: date, onChange: e => setDate(e.target.value) }),
+      h("span", null), h("button", { className: "btn btn-dark btn-sm", onClick: logPoints }, "Log Points"), h("span", null)
+    ),
+    err && h("div", { className: "error-text" }, err),
+    h("div", { className: "section-title", style: { fontSize: 15, marginBottom: 10 } }, "Recent Activity — " + activeSem.name),
+    recent.length === 0 ? h("div", { className: "empty" }, "No activity logged yet") : h("div", { className: "rows" }, recent.map(c => {
+      const m = state.members.find(x => x.id === c.memberId);
+      const t = state.tasks.find(x => x.id === c.taskId);
+      const fk = m ? getMemberFam(m) : null;
+      return h("div", { key: c.id, className: "log-row" },
+        h("div", { className: "main-info" }, h("div", { className: "row-title" }, m ? m.name : "Deleted member"), h("div", { className: "row-sub" }, c.date + " · " + (fk ? getFamName(fk) : "Unassigned") + " · " + (t ? t.name : "Deleted task"))),
+        h("div", { className: "row-points" }, t ? "+" + t.points : "—")
+      );
+    }))
+  );
+}
+
+function Settings({ state, update, showFlash, getFamName, getMemberFam }) {
+  const [subTab, setSubTab] = useState("fams");
+  const [newSemName, setNewSemName] = useState("");
+  const [renameMap, setRenameMap] = useState({});
+  const [localNames, setLocalNames] = useState(null);
+  const [reassignMap, setReassignMap] = useState({});
+  const semId = state.activeSem;
+
+  useEffect(() => {
+    const currentNames = state.famNames[semId] || {};
+    setLocalNames(FAM_META.reduce((acc, f) => ({ ...acc, [f.key]: currentNames[f.key] || f.defaultName }), {}));
+  }, [semId]);
+
+  useEffect(() => {
+    const map = {};
+    state.members.forEach(m => { map[m.id] = getMemberFam(m) || ""; });
+    setReassignMap(map);
+  }, [semId, state.members.length]);
+
+  useEffect(() => {
+    const map = {};
+    state.semesters.forEach(s => { map[s.id] = s.name; });
+    setRenameMap(map);
+  }, [state.semesters.length]);
+
+  function saveFamNames() {
+    const cleaned = Object.fromEntries(Object.entries(localNames || {}).map(([k, v]) => [k, v.trim() || getFamMeta(k).defaultName]));
+    update(s => ({ ...s, famNames: { ...s.famNames, [semId]: { ...(s.famNames[semId] || {}), ...cleaned } } }));
+    showFlash("Fam names saved");
+  }
+
+  function addSemester() {
+    if (!newSemName.trim()) return;
+    const id = uid();
+    update(s => ({
+      ...s,
+      semesters: [...s.semesters, { id, name: newSemName.trim() }],
+      activeSem: id,
+      famNames: { ...s.famNames, [id]: { ...(s.famNames[s.activeSem] || {}) } },
+      members: s.members.map(m => ({ ...m, famBySem: { ...(m.famBySem || {}), [id]: (m.famBySem || {})[s.activeSem] || null } }))
+    }));
+    setNewSemName(""); setSubTab("reassign"); showFlash("Semester created");
+  }
+
+  function saveReassignments() {
+    update(s => ({ ...s, members: s.members.map(m => ({ ...m, famBySem: { ...(m.famBySem || {}), [semId]: reassignMap[m.id] || null } })) }));
+    showFlash("Assignments saved");
+  }
+
+  function renameSemester(id) {
+    const name = (renameMap[id] || "").trim();
+    if (!name) return showFlash("Semester name cannot be blank", "error");
+    update(s => ({ ...s, semesters: s.semesters.map(sem => sem.id === id ? { ...sem, name } : sem) }));
+    showFlash("Semester renamed");
+  }
+
+  function resetSemester(id) {
+    const sem = state.semesters.find(s => s.id === id);
+    if (!window.confirm("Reset " + (sem ? sem.name : "this semester") + "? This clears points and fam assignments for this semester only. Member profiles stay saved.")) return;
+    update(s => ({
+      ...s,
+      completions: s.completions.filter(c => c.semId !== id),
+      members: s.members.map(m => { const next = { ...(m.famBySem || {}) }; delete next[id]; return { ...m, famBySem: next }; })
+    }));
+    showFlash("Semester reset");
+  }
+
+  function deleteSemester(id) {
+    if (state.semesters.length <= 1) return showFlash("Can't delete the only semester", "error");
+    const sem = state.semesters.find(s => s.id === id);
+    if (!window.confirm("Delete " + (sem ? sem.name : "this semester") + "? Member profiles stay saved.")) return;
+    const remaining = state.semesters.filter(s => s.id !== id);
+    update(s => {
+      const nextFamNames = { ...s.famNames }; delete nextFamNames[id];
+      return { ...s, semesters: remaining, activeSem: s.activeSem === id ? remaining[remaining.length - 1].id : s.activeSem, famNames: nextFamNames, members: s.members.map(m => { const next = { ...(m.famBySem || {}) }; delete next[id]; return { ...m, famBySem: next }; }), completions: s.completions.filter(c => c.semId !== id) };
+    });
+    showFlash("Semester deleted");
+  }
+
+  function resetEverything() {
+    if (!window.confirm("Reset the entire tracker? This deletes all members, tasks, semesters, and points.")) return;
+    localStorage.removeItem(STORAGE_KEY);
+    update(() => DEFAULT_STATE);
+    showFlash("Tracker reset");
+  }
+
+  return h("main", null,
+    h("div", { className: "page-head" }, h("div", { className: "section-title" }, "Settings"), h(SemPills, { state, update })),
+    h("div", { className: "toolbar" }, [["fams", "Fam Names"], ["reassign", "Reassign Fams"], ["semesters", "Semesters"]].map(([id, label]) => h("button", { key: id, className: "pill" + (subTab === id ? " active" : ""), onClick: () => setSubTab(id) }, label))),
+
+    subTab === "fams" && h("section", null,
+      h("p", { className: "helper-text" }, "Fam names are semester-specific. Switch semesters at the top to edit another term."),
+      h("div", { className: "rows" },
+        FAM_META.map(f =>
+          h("div", { key: f.key, className: "settings-row" },
+            h("span", { className: "avatar avatar-sm", style: { background: f.bar } }, ""),
+            h("div", { className: "main-info" },
+              h("div", { className: "row-title" }, "Slot " + (FAM_META.indexOf(f) + 1))
+            ),
+            h("input", {
+              className: "input",
+              value: (localNames || {})[f.key] || "",
+              onChange: e => setLocalNames(p => ({ ...p, [f.key]: e.target.value }))
+            })
+          )
+        )
+      ),
+      h("button", { className: "btn btn-dark", style: { marginTop: 16 }, onClick: saveFamNames }, "Save Fam Names")
+    ),
+
+    subTab === "reassign" && h("section", null,
+      h("p", { className: "helper-text" }, "Set each member's fam for this semester. Their profile remains saved across future semesters."),
+      h("div", { className: "rows" }, state.members.length === 0 ? h("div", { className: "empty" }, "No members yet") : [...state.members].sort((a,b) => a.name.localeCompare(b.name)).map(m => {
+        const fk = reassignMap[m.id] || "";
+        return h("div", { key: m.id, className: "settings-row" }, h("div", { className: "avatar", style: { background: fk ? getFamMeta(fk).bar : "#3d3b3b" } }, initials(m.name)), h("div", { className: "main-info" }, h("div", { className: "row-title" }, m.name), h("div", { className: "row-sub" }, m.hexClass || "No hex class")), h("select", { className: "select", value: fk, onChange: e => setReassignMap(p => ({ ...p, [m.id]: e.target.value })) }, h("option", { value: "" }, "Unassigned"), FAM_META.map(f => h("option", { key: f.key, value: f.key }, getFamName(f.key)))));
+      })),
+      state.members.length > 0 && h("button", { className: "btn btn-dark", style: { marginTop: 16 }, onClick: saveReassignments }, "Save Assignments")
+    ),
+
+    subTab === "semesters" && h("section", null,
+      h("p", { className: "helper-text" }, "Semesters store separate fam assignments and point logs. Member profiles are kept across semesters."),
+      h("div", { className: "inline-form compact" }, h("div", { className: "form-label" }, "New Semester"), h("input", { className: "input", placeholder: "e.g. Fall 2026", value: newSemName, onChange: e => setNewSemName(e.target.value), onKeyDown: e => e.key === "Enter" && addSemester() }), h("span", null), h("button", { className: "btn btn-dark btn-sm", onClick: addSemester }, "Create")),
+      h("div", { className: "rows" }, state.semesters.map(s => h("div", { key: s.id, className: "semester-row" },
+        h("div", { className: "main-info" }, h("div", { className: "row-title" }, s.name + (s.id === state.activeSem ? " · Active" : "")), h("input", { className: "input", style: { marginTop: 8, maxWidth: 250 }, value: renameMap[s.id] || "", onChange: e => setRenameMap(p => ({ ...p, [s.id]: e.target.value })), onKeyDown: e => e.key === "Enter" && renameSemester(s.id) })),
+        h("div", { className: "row-actions" }, h("button", { className: "btn btn-sm", onClick: () => renameSemester(s.id) }, "Rename"), s.id !== state.activeSem && h("button", { className: "btn btn-sm", onClick: () => update(p => ({ ...p, activeSem: s.id })) }, "Switch"), h("button", { className: "btn btn-sm", onClick: () => resetSemester(s.id) }, "Reset"), state.semesters.length > 1 && h("button", { className: "btn btn-sm btn-danger", onClick: () => deleteSemester(s.id) }, "Delete"))
+      ))),
+      h("div", { className: "card danger-zone" }, h("div", { className: "row-title", style: { marginBottom: 8 } }, "Danger Zone"), h("p", { className: "helper-text" }, "This permanently clears everything saved in this browser for the tracker."), h("button", { className: "btn btn-danger", onClick: resetEverything }, "Reset Entire Tracker"))
+    )
+  );
+}
+
+ReactDOM.render(h(App), document.getElementById("root"));
 </script>
 </body>
 </html>
