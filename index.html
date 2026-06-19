@@ -127,8 +127,8 @@
     }
     select { text-align: center; text-align-last: center; cursor: pointer; }
     input::placeholder { color: #c5c0c1; text-transform: uppercase; text-align: center; }
-    .compact { width: 170px; text-align: center; text-transform: uppercase; }
-    .tiny { width: 120px; text-align: center; text-transform: uppercase; }
+    .compact { width: 170px; text-align: center; }
+    .tiny { width: 120px; text-align: center; }
 
     .btn {
       min-height: 32px;
@@ -196,9 +196,8 @@
       min-height: 42px;
       font-size: 13px;
       text-align: center;
-      text-transform: uppercase;
     }
-    .members-controls > select { font-family: "Victor Mono", monospace; }
+    .members-controls > select { font-family: "Victor Mono", monospace; text-transform: uppercase; }
     .members-controls > .filter-sort { background: var(--dark); color: white; border-color: var(--dark); }
     .members-controls > .search {
       grid-column: 5 / 6;
@@ -986,18 +985,79 @@ function ActivityTable({ api, rows }) {
 function ProfilePage(api) {
   const m = api.member;
   if (!m) return h("div", { className: "empty" }, "Member not found.");
+  const ms = api.getMemberSem(m.id);
+  const [editing, setEditing] = useState(false);
+  const [form, setForm] = useState(null);
   const history = api.data.completions.filter(c => c.member_id === m.id);
+
+  function startEdit() {
+    setForm({
+      name: m.name,
+      hex_class: m.hex_class || "",
+      is_driver: !!m.is_driver,
+      fam_id: ms?.fam_id || "",
+      is_fam_head: !!ms?.is_fam_head
+    });
+    setEditing(true);
+  }
+
+  async function saveEdit() {
+    if (!safeName(form.name)) return api.showFlash("Name is required", "error");
+    const memberPatch = { name: safeName(form.name), hex_class: safeName(form.hex_class), is_driver: form.is_driver };
+    const semPatch = { fam_id: form.fam_id || null, is_fam_head: form.is_fam_head };
+    if (USE_SUPABASE) {
+      const { error: mErr } = await db.from("members").update(memberPatch).eq("id", m.id);
+      if (mErr) return api.showFlash(mErr.message, "error");
+      if (ms) {
+        const { error: msErr } = await db.from("member_semesters").update(semPatch).eq("id", ms.id);
+        if (msErr) return api.showFlash(msErr.message, "error");
+      } else {
+        const { error: insErr } = await db.from("member_semesters").insert({ member_id: m.id, semester_id: api.activeSemId, ...semPatch });
+        if (insErr) return api.showFlash(insErr.message, "error");
+      }
+      await api.loadAll();
+    } else {
+      await api.mutateLocal(d => ({
+        ...d,
+        members: d.members.map(x => x.id === m.id ? { ...x, ...memberPatch } : x),
+        member_semesters: ms
+          ? d.member_semesters.map(x => x.id === ms.id ? { ...x, ...semPatch } : x)
+          : [...d.member_semesters, { id: uid("ms"), member_id: m.id, semester_id: api.activeSemId, ...semPatch }]
+      }));
+    }
+    setEditing(false);
+    api.showFlash("Profile updated");
+  }
+
   return h("section", null,
     h("button", { className: "btn", style: { marginBottom: 18 }, onClick: () => api.setProfileId(null) }, "← Back"),
     h("div", { className: "profile-layout" },
       h("div", { className: "card" },
-        h("div", { className: "avatar avatar-lg" }, initials(m.name)),
-        h("div", { className: "profile-name" }, m.name),
-        h("div", { className: "tag-row" }, h("span", { className: "tag" }, m.hex_class || "No Hex"), m.is_driver && h("span", { className: "tag" }, "Driver")),
-        h("div", { className: "profile-stat-grid" },
-          h("div", { className: "profile-stat" }, h("div", { className: "label" }, "Current Semester Points"), h("div", { className: "profile-value" }, api.memberPoints(m.id) + " pts")),
-          h("div", { className: "profile-stat" }, h("div", { className: "label" }, "Lifetime Points"), h("div", { className: "profile-value" }, api.lifetimePoints(m.id) + " pts")),
-          h("div", { className: "profile-stat" }, h("div", { className: "label" }, "Driver"), h("div", { className: "profile-value" }, m.is_driver ? "Yes" : "No"))
+        h("div", { className: "avatar avatar-lg" }, initials(editing ? form.name : m.name)),
+        editing ? h("div", { className: "grid", style: { marginTop: 16 } },
+          h("div", null, h("div", { className: "label" }, "Full Name"), h("input", { style: { width: "100%" }, value: form.name, onChange: e => setForm(f => ({ ...f, name: e.target.value })) })),
+          h("div", null, h("div", { className: "label" }, "Hex Class"), h("input", { style: { width: "100%" }, value: form.hex_class, onChange: e => setForm(f => ({ ...f, hex_class: e.target.value })) })),
+          h("div", null, h("div", { className: "label" }, "Fam (" + api.activeSem.name + ")"),
+            h("select", { style: { width: "100%" }, value: form.fam_id, onChange: e => setForm(f => ({ ...f, fam_id: e.target.value })) },
+              h("option", { value: "" }, "Unassigned"),
+              api.activeFams.map(f => h("option", { key: f.id, value: f.id }, f.name))
+            )
+          ),
+          h("label", { className: "check-wrap" }, h("input", { type: "checkbox", checked: form.is_fam_head, onChange: e => setForm(f => ({ ...f, is_fam_head: e.target.checked })) }), "Fam Head"),
+          h("label", { className: "check-wrap" }, h("input", { type: "checkbox", checked: form.is_driver, onChange: e => setForm(f => ({ ...f, is_driver: e.target.checked })) }), "Driver"),
+          h("div", { className: "row-actions", style: { justifyContent: "flex-start", marginTop: 4 } },
+            h("button", { className: "btn btn-dark", onClick: saveEdit }, "Save"),
+            h("button", { className: "btn", onClick: () => setEditing(false) }, "Cancel")
+          )
+        ) : h(React.Fragment, null,
+          h("div", { className: "profile-name" }, m.name),
+          h("div", { className: "tag-row" }, h("span", { className: "tag" }, m.hex_class || "No Hex"), m.is_driver && h("span", { className: "tag" }, "Driver"), ms?.is_fam_head && h("span", { className: "tag" }, "Fam Head")),
+          h("div", { className: "profile-stat-grid" },
+            h("div", { className: "profile-stat" }, h("div", { className: "label" }, "Current Semester Points"), h("div", { className: "profile-value" }, api.memberPoints(m.id) + " pts")),
+            h("div", { className: "profile-stat" }, h("div", { className: "label" }, "Lifetime Points"), h("div", { className: "profile-value" }, api.lifetimePoints(m.id) + " pts")),
+            h("div", { className: "profile-stat" }, h("div", { className: "label" }, "Fam (" + api.activeSem.name + ")"), h("div", { className: "profile-value" }, api.getFam(ms?.fam_id)?.name || "Unassigned"))
+          ),
+          h("button", { className: "btn btn-dark", style: { marginTop: 16, width: "100%" }, onClick: startEdit }, "Edit Profile")
         )
       ),
       h("div", { className: "grid" },
@@ -1006,9 +1066,9 @@ function ProfilePage(api) {
           h("table", { className: "table" },
             h("thead", null, h("tr", null, h("th", null, "Semester"), h("th", null, "Fam"), h("th", null, "Role"), h("th", null, "Points"))),
             h("tbody", null, api.data.semesters.map(s => {
-              const ms = api.getMemberSem(m.id, s.id);
-              const fam = api.getFam(ms?.fam_id);
-              return h("tr", { key: s.id }, h("td", null, s.name), h("td", null, fam?.name || "Unassigned"), h("td", null, ms?.is_fam_head ? "Fam Head" : "Member"), h("td", null, api.memberPoints(m.id, s.id)));
+              const sms = api.getMemberSem(m.id, s.id);
+              const fam = api.getFam(sms?.fam_id);
+              return h("tr", { key: s.id }, h("td", null, s.name), h("td", null, fam?.name || "Unassigned"), h("td", null, sms?.is_fam_head ? "Fam Head" : "Member"), h("td", null, api.memberPoints(m.id, s.id)));
             }))
           )
         ),
