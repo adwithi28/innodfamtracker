@@ -98,54 +98,21 @@
       align-items: center;
       justify-content: space-between;
       gap: 16px;
-      margin-bottom: 18px;
+      margin-bottom: 24px;
     }
     .section-title {
-      font-size: 20px;
+      font-size: 18px;
       font-weight: 500;
       letter-spacing: -0.05em;
       text-transform: uppercase;
     }
 
-    .toolbar {
+    .controls {
       display: flex;
       align-items: center;
-      gap: 14px;
-      flex-wrap: wrap;
-      margin-bottom: 14px;
-    }
-
-    /* Members page control area: matches the Figma mockup */
-    .members-controls {
-      display: grid;
-      grid-template-columns: 160px 160px 160px 160px minmax(300px, 1fr);
-      gap: 14px 24px;
-      align-items: center;
-      margin-bottom: 18px;
-    }
-
-    .members-controls .search {
-      grid-column: 5 / 6;
-      width: 100%;
-    }
-
-    .members-controls .quick-add {
-      grid-column: 3 / 6;
-      grid-row: 2;
-    }
-
-    .quick-add {
-      display: flex;
-      align-items: center;
-      justify-content: flex-end;
       gap: 10px;
-      flex-wrap: nowrap;
-      border: 1px solid var(--line);
-      border-radius: 999px;
-      padding: 8px 10px;
-      background: rgba(255,255,255,0.72);
-      width: 100%;
-      min-width: 0;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
     }
 
     .pill, input, select {
@@ -158,26 +125,10 @@
       outline: none;
       font-size: 12px;
     }
-    select { text-align: center; text-align-last: center; }
+    select { text-align: center; text-align-last: center; cursor: pointer; }
     input::placeholder { color: #c5c0c1; text-transform: uppercase; text-align: center; }
-    .search { min-width: 0; width: 100%; flex: 1; text-align: center; text-transform: uppercase; }
-    .compact { width: 140px; text-align: center; text-transform: uppercase; }
-    .tiny { width: 112px; text-align: center; text-transform: uppercase; }
-    .filter-select { min-width: 146px; text-align: center; text-align-last: center; text-transform: uppercase; }
-    .semester-select { min-width: 148px; font-size: 16px; height: 42px; padding-left: 28px; padding-right: 28px; }
-    .section-head .semester-select { min-width: 150px; }
-
-    .check-wrap {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 11px;
-      text-transform: uppercase;
-      color: var(--ink);
-    }
-    .check-wrap input { width: 16px; height: 16px; min-height: auto; padding: 0; accent-color: var(--dark); border-radius: 0; }
-    .check-stack { display: grid; gap: 2px; min-width: 118px; }
-    .filter-sort { background: var(--dark); color: #fff; border-color: var(--dark); }
+    .compact { width: 170px; text-align: center; text-transform: uppercase; }
+    .tiny { width: 120px; text-align: center; text-transform: uppercase; }
 
     .btn {
       min-height: 32px;
@@ -190,19 +141,12 @@
       font-weight: 500;
       text-transform: uppercase;
       cursor: pointer;
+      white-space: nowrap;
     }
     .btn:hover { background: #f0eeee; }
     .btn-dark { background: var(--dark); color: white; border-color: var(--dark); }
+    .btn-dark:hover { background: #2c2a2a; }
     .btn-danger { color: var(--danger); border-color: var(--danger); background: white; }
-    .btn-icon {
-      width: 42px;
-      height: 42px;
-      padding: 0;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 18px;
-    }
     .btn-sm { min-height: 28px; padding: 0 12px; font-size: 10px; }
 
     .notice {
@@ -236,6 +180,65 @@
     .helper { color: var(--muted); line-height: 1.5; margin-bottom: 12px; font-size: 12px; }
     .empty { color: var(--muted); text-align: center; padding: 42px 0; }
 
+    /* ── Members page toolbar (matches mockup: 2-row grid) ── */
+    .members-controls {
+      display: grid;
+      grid-template-columns: 160px 160px 160px 160px minmax(280px, 1fr);
+      column-gap: 24px;
+      row-gap: 14px;
+      align-items: center;
+      margin-bottom: 34px;
+    }
+    .members-controls > select,
+    .members-controls > input.search {
+      width: 100%;
+      height: 42px;
+      min-height: 42px;
+      font-size: 13px;
+      text-align: center;
+      text-transform: uppercase;
+    }
+    .members-controls > select { font-family: "Victor Mono", monospace; }
+    .members-controls > .filter-sort { background: var(--dark); color: white; border-color: var(--dark); }
+    .members-controls > .search {
+      grid-column: 5 / 6;
+      font-family: "Fragment Mono", monospace;
+    }
+    .members-controls > .quick-add {
+      grid-column: 3 / 6;
+      grid-row: 2;
+    }
+
+    .quick-add {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 10px;
+      flex-wrap: nowrap;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 8px 10px;
+      background: rgba(255,255,255,0.72);
+      width: 100%;
+      min-width: 0;
+    }
+    .quick-add .compact { width: 170px; }
+    .quick-add .tiny { width: 120px; }
+
+    .check-stack { display: grid; grid-template-columns: 1fr; gap: 2px; min-width: 95px; }
+    .check-wrap {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-family: "Victor Mono", monospace;
+      font-size: 11px;
+      letter-spacing: -0.02em;
+      text-transform: uppercase;
+      color: var(--ink);
+      white-space: nowrap;
+    }
+    .check-wrap input { width: 14px; height: 14px; min-height: auto; padding: 0; accent-color: var(--dark); border-radius: 0; }
+
     .member-list, .task-list, .activity-list { display: grid; gap: 14px; }
     .member-card {
       display: grid;
@@ -256,14 +259,14 @@
       color: white;
       display: grid;
       place-items: center;
-      font-size: 18px;
+      font-size: 16px;
       font-weight: 400;
-      letter-spacing: -0.08em;
+      letter-spacing: -0.06em;
       flex: 0 0 auto;
     }
     .avatar-lg { width: 74px; height: 74px; font-size: 27px; }
     .member-name {
-      font-size: 26px;
+      font-size: 24px;
       letter-spacing: -0.05em;
       text-transform: uppercase;
       line-height: 1;
@@ -294,38 +297,73 @@
       font-weight: 400;
     }
     .row-actions { display: flex; gap: 10px; align-items: center; }
-    .member-card .points-big { font-size: 26px; letter-spacing: -0.05em; }
+    .member-card .points-big { font-size: 22px; letter-spacing: -0.05em; }
 
+    /* ── Leaderboard / fam cards (matches mockup) ── */
+    .leaderboard-grid { display: grid; gap: 20px; }
     .fam-card {
-      border-radius: 8px;
+      border-radius: 12px;
       border: 0;
-      padding: 17px 16px;
+      padding: 22px 26px;
       display: grid;
-      gap: 12px;
+      gap: 14px;
     }
-    .fam-top { display: flex; align-items: center; justify-content: space-between; }
+    .fam-top { display: flex; align-items: baseline; justify-content: space-between; gap: 18px; }
     .fam-title {
       font-family: "Victor Mono", monospace;
-      font-size: 28px;
+      font-size: clamp(24px, 2.6vw, 32px);
       font-weight: 500;
       text-transform: uppercase;
-      letter-spacing: -0.06em;
+      letter-spacing: -0.05em;
+      color: var(--ink);
     }
-    .fam-bar-wrap { height: 10px; border-radius: 999px; background: rgba(255,255,255,0.5); overflow: hidden; }
+    .fam-card .points-big {
+      font-size: 16px;
+      font-weight: 500;
+      letter-spacing: -0.02em;
+      white-space: nowrap;
+      color: var(--ink);
+    }
+    .fam-bar-wrap { height: 9px; border-radius: 999px; background: rgba(255,255,255,0.55); overflow: hidden; }
     .fam-bar { height: 100%; border-radius: 999px; transition: width 0.4s ease; }
-    .fam-members { display: flex; flex-wrap: wrap; gap: 7px; }
-    .mini-chip { font-size: 9px; padding: 3px 8px; border-radius: 999px; background: rgba(255,255,255,0.68); color: var(--ink); }
+
+    .fam-members-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .fam-members-list { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; min-width: 0; }
+    .fam-member-chip { display: flex; align-items: center; gap: 7px; font-size: 11px; white-space: nowrap; }
+    .chip-avatar {
+      width: 22px; height: 22px; border-radius: 50%;
+      display: grid; place-items: center;
+      font-family: "Victor Mono", monospace;
+      font-size: 9px; color: #fff; flex: 0 0 auto;
+    }
+    .fam-count {
+      font-family: "Victor Mono", monospace;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: -0.02em;
+      color: var(--ink);
+      white-space: nowrap;
+    }
 
     .task-row, .activity-row, .semester-row, .fam-edit-row {
       border: 1px solid var(--line);
       border-radius: 999px;
       background: white;
-      padding: 8px 12px;
+      padding: 8px 14px;
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 14px;
     }
+    .fam-edit-row { padding: 6px 8px 6px 16px; }
+    .fam-edit-row input { flex: 1; min-width: 0; }
+    .fam-swatch { width: 18px; height: 18px; border-radius: 50%; flex: 0 0 auto; border: 1px solid rgba(0,0,0,0.08); }
     .task-main, .activity-main { display: flex; align-items: center; gap: 14px; min-width: 0; }
     .task-name { text-transform: uppercase; }
     .muted { color: var(--muted); }
@@ -376,6 +414,14 @@
 
     .danger-zone { border-color: #ffb6b6; background: #fffafa; margin-top: 20px; }
 
+    @media (max-width: 980px) {
+      .members-controls { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .members-controls > .search,
+      .members-controls > .quick-add { grid-column: 1 / -1; grid-row: auto; }
+      .members-controls > select { width: 100%; }
+      .members-controls > .quick-add { flex-wrap: wrap; justify-content: flex-start; border-radius: 22px; }
+    }
+
     @media (max-width: 860px) {
       .page { width: min(100% - 28px, 1120px); padding-top: 26px; }
       .topbar { align-items: flex-start; flex-direction: column; gap: 18px; }
@@ -383,149 +429,9 @@
       .two-col, .profile-layout { grid-template-columns: 1fr; }
       .member-card { grid-template-columns: 44px 1fr; }
       .points-big, .row-actions { grid-column: 2; }
-      .quick-add, .controls { align-items: stretch; }
-      .controls-primary { grid-template-columns: 1fr; }
-      .controls-secondary { flex-direction: column; align-items: stretch; }
-      .quick-add > *, .controls-secondary > * { flex: 1 1 160px; width: 100%; }
-      .quick-add { border-radius: 22px; justify-content: flex-start; }
-      .search { min-width: 0; }
+      .quick-add > * { flex: 1 1 160px; width: 100%; }
+      .quick-add { flex-wrap: wrap; border-radius: 22px; justify-content: flex-start; }
     }
-  
-
-    /* Exact members layout overrides */
-    .members-controls {
-      display: grid;
-      grid-template-columns: 160px 160px 160px 160px minmax(320px, 1fr);
-      gap: 14px 24px;
-      align-items: center;
-      margin-bottom: 18px;
-    }
-    .members-controls .search {
-      grid-column: 5 / 6;
-      width: 100%;
-    }
-    .members-controls .quick-add {
-      grid-column: 3 / 6;
-      grid-row: 2;
-    }
-    .quick-add {
-      width: 100%;
-      display: flex;
-      align-items: center;
-      justify-content: flex-end;
-      gap: 10px;
-      flex-wrap: nowrap;
-      border: 1px solid var(--line);
-      border-radius: 999px;
-      padding: 8px 10px;
-      background: rgba(255,255,255,0.72);
-    }
-    .quick-add .compact { width: 170px; }
-    .quick-add .tiny { width: 120px; }
-    .section-head.members-head {
-      justify-content: flex-start;
-      margin-bottom: 18px;
-    }
-    .section-title {
-      font-size: 18px;
-      font-weight: 500;
-      letter-spacing: -0.05em;
-      text-transform: uppercase;
-    }
-    .members-controls > .filter-select {
-      height: 42px;
-      font-size: 14px;
-    }
-    .members-controls .semester-inline {
-      min-width: 160px;
-      height: 42px;
-      font-size: 14px;
-    }
-
-
-    /* Final members-page layout: exact two-row mockup */
-    .members-head { margin-bottom: 24px; }
-    .members-controls {
-      display: grid;
-      grid-template-columns: 160px 160px 160px 160px minmax(300px, 1fr);
-      column-gap: 24px;
-      row-gap: 14px;
-      align-items: center;
-      margin-bottom: 34px;
-    }
-    .members-controls > .filter-select,
-    .members-controls > .semester-inline {
-      width: 160px;
-      height: 42px;
-      min-height: 42px;
-      font-family: "Victor Mono", monospace;
-      font-size: 14px;
-      text-align: center;
-      text-transform: uppercase;
-    }
-    .members-controls > .filter-sort {
-      background: var(--dark);
-      color: white;
-      border-color: var(--dark);
-    }
-    .members-controls > .search {
-      grid-column: 5 / 6;
-      width: 100%;
-      height: 42px;
-      min-height: 42px;
-      font-family: "Fragment Mono", monospace;
-      font-size: 13px;
-      text-align: center;
-    }
-    .members-controls > .quick-add {
-      grid-column: 3 / 6;
-      grid-row: 2;
-      width: 100%;
-      min-height: 46px;
-      display: flex;
-      align-items: center;
-      justify-content: flex-end;
-      gap: 10px;
-      flex-wrap: nowrap;
-      border: 1px solid var(--line);
-      border-radius: 999px;
-      padding: 8px 10px;
-      background: rgba(255,255,255,0.72);
-    }
-    .quick-add .compact { width: 170px; }
-    .quick-add .tiny { width: 120px; }
-    .check-stack {
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 2px;
-      min-width: 95px;
-    }
-    .check-wrap {
-      font-family: "Victor Mono", monospace;
-      font-size: 11px;
-      letter-spacing: -0.04em;
-    }
-
-    @media (max-width: 980px) {
-      .members-controls {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-      }
-      .members-controls > .search,
-      .members-controls > .quick-add {
-        grid-column: 1 / -1;
-        grid-row: auto;
-      }
-      .members-controls > .filter-select,
-      .members-controls > .semester-inline {
-        width: 100%;
-      }
-      .members-controls > .quick-add {
-        flex-wrap: wrap;
-        justify-content: flex-start;
-        border-radius: 22px;
-      }
-    }
-
   </style>
 </head>
 <body>
@@ -543,18 +449,33 @@ const SUPABASE_URL = "https://uvryklpzzblpuozbpwhs.supabase.co";
 const SUPABASE_KEY = "sb_publishable_0PJFkT3SxMFdqkA98r_b6Q_8aS9q_fR";
 const USE_SUPABASE = SUPABASE_URL.startsWith("https://") && !SUPABASE_KEY.startsWith("YOUR_");
 const db = USE_SUPABASE ? supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
-const LOCAL_KEY = "innod_tracker_v2_fall2026";
+const LOCAL_KEY = "innod_tracker_v3_fall2026";
 
-const FAM_META = [
-  { slot: 1, key: "fam1", name: "Fam 1", bg: "#E6ECFF", bar: "#7B8FD9" },
-  { slot: 2, key: "fam2", name: "Fam 2", bg: "#FFF3D8", bar: "#B9A070" },
-  { slot: 3, key: "fam3", name: "Fam 3", bg: "#E5F8E6", bar: "#7AAE75" },
-  { slot: 4, key: "fam4", name: "Fam 4", bg: "#FFE5E8", bar: "#B76C73" }
+// Fams are no longer locked to 4 fixed slots — any number of fams can be
+// added or removed per semester. New fams cycle through this palette.
+const COLOR_PALETTE = [
+  { key: "blue",   bg: "#E6ECFF", bar: "#7B8FD9" },
+  { key: "tan",    bg: "#FFF3D8", bar: "#B9A070" },
+  { key: "green",  bg: "#E5F8E6", bar: "#7AAE75" },
+  { key: "red",    bg: "#FFE5E8", bar: "#B76C73" },
+  { key: "purple", bg: "#F1E6FF", bar: "#9B7BD9" },
+  { key: "teal",   bg: "#E0F7F5", bar: "#5FA8A0" },
+  { key: "orange", bg: "#FFEAD6", bar: "#D98F4E" },
+  { key: "pink",   bg: "#FFE6F2", bar: "#D97BA8" }
+];
+function colorFor(idx) { return COLOR_PALETTE[idx % COLOR_PALETTE.length]; }
+function famMeta(colorKey) { return COLOR_PALETTE.find(c => c.key === colorKey) || COLOR_PALETTE[0]; }
+
+const STARTER_FAMS = [
+  { name: "Maple Fam",   color_key: "blue" },
+  { name: "Willow Fam",  color_key: "tan" },
+  { name: "Cypress Fam", color_key: "green" },
+  { name: "Aspen Fam",   color_key: "red" }
 ];
 
 const DEFAULT_LOCAL = {
   semesters: [{ id: "fall2026", name: "Fall 2026", is_active: true }],
-  fams: FAM_META.map(f => ({ id: f.key, semester_id: "fall2026", slot: f.slot, name: f.name, color_key: f.key })),
+  fams: STARTER_FAMS.map((f, i) => ({ id: "fam" + (i + 1), semester_id: "fall2026", slot: i + 1, name: f.name, color_key: f.color_key })),
   members: [],
   member_semesters: [],
   tasks: [],
@@ -564,7 +485,6 @@ const DEFAULT_LOCAL = {
 function uid(prefix="id") { return prefix + "_" + Math.random().toString(36).slice(2, 10); }
 function today() { return new Date().toISOString().slice(0, 10); }
 function initials(name="") { return name.trim().split(/\s+/).map(w => w[0] || "").join("").slice(0, 2).toUpperCase() || "?"; }
-function famMeta(colorKey) { return FAM_META.find(f => f.key === colorKey) || FAM_META[0]; }
 function safeName(s) { return (s || "").trim(); }
 
 function loadLocal() {
@@ -641,7 +561,7 @@ function App() {
   async function seedFall2026() {
     const semId = "fall2026";
     await db.from("semesters").insert({ id: semId, name: "Fall 2026", is_active: true });
-    await db.from("fams").insert(FAM_META.map(f => ({ semester_id: semId, slot: f.slot, name: f.name, color_key: f.key })));
+    await db.from("fams").insert(STARTER_FAMS.map((f, i) => ({ semester_id: semId, slot: i + 1, name: f.name, color_key: f.color_key })));
   }
 
   function showFlash(msg, type="success") {
@@ -680,7 +600,7 @@ function App() {
     ["leaderboard", "Home"],
     ["members", "Members"],
     ["tasks", "Tasks"],
-    ["activities", "Activities"],
+    ["activities", "Log Points"],
     ["settings", "Settings"]
   ];
 
@@ -691,7 +611,7 @@ function App() {
       h("h1", { className: "app-title" }, "Innovative Design at USC"),
       h("nav", { className: "nav" },
         TABS.map(([key, label]) => h("button", {
-          key, className: "nav-btn" + (tab === key ? " active" : ""),
+          key, className: "nav-btn" + (!profileId && tab === key ? " active" : ""),
           onClick: () => { setTab(key); setProfileId(null); }
         }, label))
       )
@@ -712,14 +632,13 @@ function App() {
 //  Used anywhere the user needs to switch semesters.
 // ============================================================
 function SemesterPicker({ data, activeSemId, setActiveSemId }) {
-  return h("select", { className: "filter-select semester-select", value: activeSemId, onChange: e => setActiveSemId(e.target.value) },
+  return h("select", { className: "filter-select", value: activeSemId, onChange: e => setActiveSemId(e.target.value) },
     data.semesters.map(s => h("option", { key: s.id, value: s.id }, s.name))
   );
 }
 
 function InlineSemesterDropdown({ data, activeSemId, setActiveSemId }) {
   return h("select", {
-    className: "filter-select semester-inline",
     value: "",
     onChange: e => { if (e.target.value) setActiveSemId(e.target.value); }
   },
@@ -741,18 +660,28 @@ function Leaderboard(api) {
       h("h2", { className: "section-title" }, api.activeSem.name + " Standings"),
       h(SemesterPicker, api)
     ),
-    ranked.length === 0 && h("div", { className: "empty" }, "No fams yet — create them in Settings."),
-    h("div", { className: "grid" }, ranked.map(f => {
+    ranked.length === 0 && h("div", { className: "empty" }, "No fams yet — add them in Settings."),
+    h("div", { className: "leaderboard-grid" }, ranked.map(f => {
       const meta = famMeta(f.color_key);
       const members = api.data.members.filter(m => api.getMemberSem(m.id)?.fam_id === f.id);
+      const ranked_members = [...members].sort((a,b) => api.memberPoints(b.id) - api.memberPoints(a.id));
+      const preview = ranked_members.slice(0, 3);
       return h("div", { key: f.id, className: "fam-card", style: { background: meta.bg } },
         h("div", { className: "fam-top" },
           h("div", { className: "fam-title" }, f.name),
           h("div", { className: "points-big" }, f.pts + " Points")
         ),
         h("div", { className: "fam-bar-wrap" }, h("div", { className: "fam-bar", style: { width: Math.round(f.pts / max * 100) + "%", background: meta.bar } })),
-        h("div", { className: "fam-members" },
-          members.length ? members.slice(0, 12).map(m => h("span", { key: m.id, className: "mini-chip" }, initials(m.name) + " " + api.memberPoints(m.id) + " pts")) : h("span", { className: "mini-chip" }, "No members")
+        h("div", { className: "fam-members-row" },
+          h("div", { className: "fam-members-list" },
+            preview.length
+              ? preview.map(m => h("div", { key: m.id, className: "fam-member-chip" },
+                  h("span", { className: "chip-avatar", style: { background: meta.bar } }, initials(m.name)),
+                  h("span", null, m.name + ": " + api.memberPoints(m.id) + " Points")
+                ))
+              : h("span", { className: "muted" }, "No members")
+          ),
+          h("div", { className: "fam-count" }, members.length + (members.length === 1 ? " Member" : " Members"))
         )
       );
     }))
@@ -778,7 +707,7 @@ function MembersPage(api) {
   const [isDriver, setIsDriver] = useState(false);
   const [isFamHead, setIsFamHead] = useState(false);
 
-  useEffect(() => { if (!famId && api.activeFams[0]) setFamId(api.activeFams[0].id); }, [api.activeSemId, api.activeFams.length]);
+  useEffect(() => { if (!api.activeFams.find(f => f.id === famId)) setFamId(api.activeFams[0]?.id || ""); }, [api.activeSemId, api.activeFams.length]);
 
   const hexClasses = [...new Set(api.data.members.map(m => m.hex_class).filter(Boolean))].sort();
 
@@ -830,14 +759,14 @@ function MembersPage(api) {
   }
 
   return h("section", null,
-    h("div", { className: "section-head members-head" }, h("h2", { className: "section-title" }, "Members")),
+    h("div", { className: "section-head" }, h("h2", { className: "section-title" }, "Members")),
     h("div", { className: "members-controls" },
-      h("select", { className: "filter-select filter-sort", value: sort, onChange: e => setSort(e.target.value) }, h("option", { value: "points" }, "Sort by"), h("option", { value: "points" }, "Points"), h("option", { value: "name" }, "Name"), h("option", { value: "fam" }, "Fam")),
-      h("select", { className: "filter-select", value: famFilter, onChange: e => setFamFilter(e.target.value) }, h("option", { value: "all" }, "Fam"), api.activeFams.map(f => h("option", { key: f.id, value: f.id }, f.name))),
-      h("select", { className: "filter-select", value: hexFilter, onChange: e => setHexFilter(e.target.value) }, h("option", { value: "all" }, "Hex Class"), hexClasses.map(x => h("option", { key: x, value: x }, x))),
-      h("select", { className: "filter-select", value: driverFilter, onChange: e => setDriverFilter(e.target.value) }, h("option", { value: "all" }, "Driver"), h("option", { value: "drivers" }, "Drivers"), h("option", { value: "nondrivers" }, "Non Drivers")),
+      h("select", { className: "filter-sort", value: sort, onChange: e => setSort(e.target.value) }, h("option", { value: "points" }, "Sort By"), h("option", { value: "points" }, "Points"), h("option", { value: "name" }, "Name"), h("option", { value: "fam" }, "Fam")),
+      h("select", { value: famFilter, onChange: e => setFamFilter(e.target.value) }, h("option", { value: "all" }, "Fam"), api.activeFams.map(f => h("option", { key: f.id, value: f.id }, f.name))),
+      h("select", { value: hexFilter, onChange: e => setHexFilter(e.target.value) }, h("option", { value: "all" }, "Hex Class"), hexClasses.map(x => h("option", { key: x, value: x }, x))),
+      h("select", { value: driverFilter, onChange: e => setDriverFilter(e.target.value) }, h("option", { value: "all" }, "Driver"), h("option", { value: "drivers" }, "Drivers"), h("option", { value: "nondrivers" }, "Non Drivers")),
       h("input", { className: "search", value: search, onChange: e => setSearch(e.target.value), placeholder: "Search" }),
-      h("select", { className: "filter-select", value: headFilter, onChange: e => setHeadFilter(e.target.value) }, h("option", { value: "all" }, "Fam Head"), h("option", { value: "heads" }, "Fam Heads"), h("option", { value: "nonheads" }, "Non Heads")),
+      h("select", { value: headFilter, onChange: e => setHeadFilter(e.target.value) }, h("option", { value: "all" }, "Fam Head"), h("option", { value: "heads" }, "Fam Heads"), h("option", { value: "nonheads" }, "Non Heads")),
       h(InlineSemesterDropdown, api),
       h("div", { className: "quick-add" },
         h("input", { className: "compact", value: name, onChange: e => setName(e.target.value), placeholder: "Full Name" }),
@@ -932,8 +861,8 @@ function TasksPage(api) {
 
   return h("section", null,
     h("div", { className: "section-head" }, h("h2", { className: "section-title" }, "Tasks")),
-    h("div", { className: "quick-add" },
-      h("span", { className: "card-title", style: { margin: 0 } }, "Add Task"),
+    h("div", { className: "quick-add", style: { justifyContent: "flex-start", marginBottom: 20 } },
+      h("span", { className: "card-title", style: { margin: 0, whiteSpace: "nowrap" } }, "Add Task"),
       h("input", { className: "compact", value: name, onChange: e => setName(e.target.value), placeholder: "Task Name" }),
       h("input", { className: "tiny", type: "number", min: 1, value: points, onChange: e => setPoints(e.target.value), placeholder: "Point Value" }),
       h("button", { className: "btn btn-dark", onClick: addTask }, "Add")
@@ -955,7 +884,7 @@ function TasksPage(api) {
 }
 
 // ============================================================
-//  PAGE: ACTIVITIES
+//  PAGE: ACTIVITIES / LOG POINTS
 //  Single award + bulk award workflows for assigning points.
 // ============================================================
 function ActivitiesPage(api) {
@@ -994,7 +923,7 @@ function ActivitiesPage(api) {
   const recent = [...api.data.completions].filter(c => c.semester_id === api.activeSemId).slice(0, 20);
 
   return h("section", null,
-    h("div", { className: "section-head" }, h("h2", { className: "section-title" }, "Activities"), h(SemesterPicker, api)),
+    h("div", { className: "section-head" }, h("h2", { className: "section-title" }, "Log Points"), h(SemesterPicker, api)),
     h("div", { className: "controls" },
       h("button", { className: "btn " + (mode === "bulk" ? "btn-dark" : ""), onClick: () => setMode("bulk") }, "Bulk Award"),
       h("button", { className: "btn " + (mode === "single" ? "btn-dark" : ""), onClick: () => setMode("single") }, "Single Award")
@@ -1094,7 +1023,7 @@ function ProfilePage(api) {
 
 // ============================================================
 //  PAGE: SETTINGS
-//  Fam names, semesters, semester reset/delete,
+//  Fam create/rename/delete, semesters, semester reset/delete,
 //  and full tracker reset.
 // ============================================================
 function SettingsPage(api) {
@@ -1117,26 +1046,65 @@ function SettingsPage(api) {
     api.showFlash("Fam names saved");
   }
 
+  async function addFam() {
+    const slot = api.activeFams.length + 1;
+    const color_key = colorFor(api.activeFams.length).key;
+    const name = "New Fam";
+    if (USE_SUPABASE) {
+      const { error } = await db.from("fams").insert({ semester_id: api.activeSemId, slot, name, color_key });
+      if (error) return api.showFlash(error.message, "error");
+      await api.loadAll();
+    } else {
+      await api.mutateLocal(d => ({ ...d, fams: [...d.fams, { id: uid("fam"), semester_id: api.activeSemId, slot, name, color_key }] }));
+    }
+    api.showFlash("Fam added");
+  }
+
+  async function deleteFam(id) {
+    if (api.activeFams.length <= 1) return api.showFlash("You need at least one fam this semester", "error");
+    if (!confirm("Delete this fam? Members assigned to it will become unassigned for this semester.")) return;
+    if (USE_SUPABASE) {
+      await db.from("member_semesters").update({ fam_id: null, is_fam_head: false }).eq("fam_id", id);
+      const { error } = await db.from("fams").delete().eq("id", id);
+      if (error) return api.showFlash(error.message, "error");
+      await api.loadAll();
+    } else {
+      await api.mutateLocal(d => ({
+        ...d,
+        fams: d.fams.filter(f => f.id !== id),
+        member_semesters: d.member_semesters.map(ms => ms.fam_id === id ? { ...ms, fam_id: null, is_fam_head: false } : ms)
+      }));
+    }
+    api.showFlash("Fam deleted");
+  }
+
   async function createSemester() {
     if (!safeName(newSem)) return api.showFlash("Semester name required", "error");
     const id = uid("sem");
+    // New semesters start with the same fam names as the currently active semester
+    // (falling back to the starter set). Members are NOT assigned to any fam —
+    // fam assignments and fam-head status both start fresh each semester.
+    const sourceFams = api.activeFams.length ? api.activeFams : STARTER_FAMS.map((f, i) => ({ slot: i + 1, name: f.name, color_key: f.color_key }));
     if (USE_SUPABASE) {
       const { data: sem, error } = await db.from("semesters").insert({ name: safeName(newSem), is_active: false }).select().single();
       if (error) return api.showFlash(error.message, "error");
-      await db.from("fams").insert(FAM_META.map(f => ({ semester_id: sem.id, slot: f.slot, name: f.name, color_key: f.key })));
-      // carry member fams forward, but reset fam head every semester
-      const rows = api.data.members.map(m => ({ member_id: m.id, semester_id: sem.id, fam_id: api.getMemberSem(m.id)?.fam_id || null, is_fam_head: false }));
+      await db.from("fams").insert(sourceFams.map((f, i) => ({ semester_id: sem.id, slot: f.slot || i + 1, name: f.name, color_key: f.color_key })));
+      const rows = api.data.members.map(m => ({ member_id: m.id, semester_id: sem.id, fam_id: null, is_fam_head: false }));
       if (rows.length) await db.from("member_semesters").insert(rows);
       await api.loadAll(); api.setActiveSemId(sem.id);
     } else {
-      await api.mutateLocal(d => ({ ...d,
-        semesters: [...d.semesters, { id, name: safeName(newSem), is_active: false }],
-        fams: [...d.fams, ...FAM_META.map(f => ({ id: uid("fam"), semester_id: id, slot: f.slot, name: f.name, color_key: f.key }))],
-        member_semesters: [...d.member_semesters, ...d.members.map(m => ({ id: uid("ms"), member_id: m.id, semester_id: id, fam_id: api.getMemberSem(m.id)?.fam_id || null, is_fam_head: false }))]
-      }));
+      await api.mutateLocal(d => {
+        const newFams = sourceFams.map((f, i) => ({ id: uid("fam"), semester_id: id, slot: f.slot || i + 1, name: f.name, color_key: f.color_key }));
+        return {
+          ...d,
+          semesters: [...d.semesters, { id, name: safeName(newSem), is_active: false }],
+          fams: [...d.fams, ...newFams],
+          member_semesters: [...d.member_semesters, ...d.members.map(m => ({ id: uid("ms"), member_id: m.id, semester_id: id, fam_id: null, is_fam_head: false }))]
+        };
+      });
       api.setActiveSemId(id);
     }
-    setNewSem(""); api.showFlash("Semester created. Fam heads were reset.");
+    setNewSem(""); api.showFlash("Semester created. Members start unassigned.");
   }
 
   async function resetSemester(id) {
@@ -1178,17 +1146,22 @@ function SettingsPage(api) {
     h("div", { className: "section-head" }, h("h2", { className: "section-title" }, "Settings"), h(SemesterPicker, api)),
     h("div", { className: "grid two-col" },
       h("div", { className: "card" },
-        h("div", { className: "card-title" }, "Fam Names"),
-        h("p", { className: "helper" }, "Fam names are semester-specific. You can decide them later."),
+        h("div", { className: "card-title" }, "Fams — " + api.activeSem.name),
+        h("p", { className: "helper" }, "Add, rename, or remove fams for this semester. Each new fam is assigned the next color automatically."),
         h("div", { className: "grid" }, api.activeFams.map(f => h("div", { key: f.id, className: "fam-edit-row" },
-          h("span", { className: "tag" }, "Slot " + f.slot),
-          h("input", { value: newFamNames[f.id] || "", onChange: e => setNewFamNames(p => ({ ...p, [f.id]: e.target.value })) })
+          h("span", { className: "fam-swatch", style: { background: famMeta(f.color_key).bar } }),
+          h("input", { value: newFamNames[f.id] ?? f.name, onChange: e => setNewFamNames(p => ({ ...p, [f.id]: e.target.value })) }),
+          h("button", { className: "btn btn-sm btn-danger", onClick: () => deleteFam(f.id) }, "X")
         ))),
-        h("button", { className: "btn btn-dark", style: { marginTop: 14 }, onClick: saveFamNames }, "Save Fam Names")
+        api.activeFams.length === 0 && h("div", { className: "empty" }, "No fams yet — add one below."),
+        h("div", { className: "row-actions", style: { marginTop: 14, justifyContent: "flex-start" } },
+          h("button", { className: "btn btn-dark", onClick: saveFamNames }, "Save Names"),
+          h("button", { className: "btn", onClick: addFam }, "+ Add Fam")
+        )
       ),
       h("div", { className: "card" },
         h("div", { className: "card-title" }, "Semesters"),
-        h("div", { className: "quick-add", style: { marginBottom: 18 } },
+        h("div", { className: "quick-add", style: { marginBottom: 18, justifyContent: "flex-start" } },
           h("input", { value: newSem, onChange: e => setNewSem(e.target.value), placeholder: "Spring 2027" }),
           h("button", { className: "btn btn-dark", onClick: createSemester }, "Create")
         ),
