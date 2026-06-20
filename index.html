@@ -481,6 +481,7 @@ const DEFAULT_LOCAL = {
   completions: [],
   point_submissions: [],
   point_submission_items: [],
+  point_submission_item_members: [],
   point_submission_item_fam_counts: [],
   fam_point_logs: []
 };
@@ -526,6 +527,7 @@ function App() {
           completions,
           submissions,
           submissionItems,
+          submissionMembers,
           submissionCounts,
           famPointLogs
         ] = await Promise.all([
@@ -537,6 +539,7 @@ function App() {
           db.from("completions").select("*").order("date", { ascending: false }),
           db.from("point_submissions").select("*").order("created_at", { ascending: false }),
           db.from("point_submission_items").select("*"),
+          db.from("point_submission_item_members").select("*"),
           db.from("point_submission_item_fam_counts").select("*"),
           db.from("fam_point_logs").select("*")
         ]);
@@ -549,6 +552,7 @@ function App() {
           completions,
           submissions,
           submissionItems,
+          submissionMembers,
           submissionCounts,
           famPointLogs
         ].filter(r => r.error);
@@ -563,6 +567,7 @@ function App() {
           completions: completions.data || [],
           point_submissions: submissions.data || [],
           point_submission_items: submissionItems.data || [],
+          point_submission_item_members: submissionMembers.data || [],
           point_submission_item_fam_counts: submissionCounts.data || [],
           fam_point_logs: famPointLogs.data || []
         };
@@ -1168,6 +1173,29 @@ async function approveSubmission(api, submission) {
 
     if (rows.length) {
       const { error } = await db.from("fam_point_logs").insert(rows);
+      if (error) return api.showFlash(error.message, "error");
+    }
+
+    const alreadyLoggedMembers = new Set(
+      (api.data.completions || [])
+        .filter(c => c.task_id === item.final_task_id && c.semester_id === submission.semester_id)
+        .map(c => c.member_id + "|" + c.task_id + "|" + c.date)
+    );
+
+    const todayStr = new Date().toISOString().slice(0, 10);
+
+    const memberRows = (api.data.point_submission_item_members || [])
+      .filter(row => row.item_id === item.id)
+      .filter(row => !alreadyLoggedMembers.has(row.member_id + "|" + item.final_task_id + "|" + todayStr))
+      .map(row => ({
+        member_id: row.member_id,
+        task_id: item.final_task_id,
+        semester_id: submission.semester_id,
+        date: todayStr
+      }));
+
+    if (memberRows.length) {
+      const { error } = await db.from("completions").insert(memberRows);
       if (error) return api.showFlash(error.message, "error");
     }
   }
