@@ -1737,31 +1737,12 @@ function SettingsPage(api) {
   }
 
   if (USE_SUPABASE) {
-    const tables = [
-      "fam_point_logs",
-      "point_submission_item_members",
-      "point_submission_item_fam_counts",
-      "point_submission_items",
-      "point_submissions",
-      "completions",
-      "member_semesters",
-      "members",
-      "tasks",
-      "fams",
-      "semesters"
-    ];
+    const { error } = await db.rpc("reset_entire_tracker");
 
-    for (const table of tables) {
-      const { error } = await db
-        .from(table)
-        .delete()
-        .neq("id", "00000000-0000-0000-0000-000000000000");
-
-      if (error) {
-        console.error(`Reset failed on ${table}:`, error);
-        api.showFlash(`Reset failed on ${table}: ${error.message}`, "error");
-        return;
-      }
+    if (error) {
+      console.error("Reset failed:", error);
+      api.showFlash("Reset failed: " + error.message, "error");
+      return;
     }
 
     await seedFall2026();
