@@ -1727,38 +1727,53 @@ function SettingsPage(api) {
   }
 
   async function resetEverything() {
-    const confirmation = prompt(
-      'DANGER: This will permanently delete ALL members, tasks, semesters, submissions, fam assignments, and points.\n\nType "DELETE EVERYTHING" to continue.'
-    );
+  const confirmation = prompt(
+    'DANGER: This will permanently delete ALL members, tasks, semesters, submissions, fam assignments, and points.\n\nType "DELETE EVERYTHING" to continue.'
+  );
 
-    if (confirmation !== "DELETE EVERYTHING") {
-      api.showFlash("Tracker reset cancelled", "error");
-      return;
-    }
-
-    if (USE_SUPABASE) {
-      await db.from("fam_point_logs").delete().neq("id", "00000000-0000-0000-0000-000000000000");
-      await db.from("point_submission_item_members").delete().neq("id", "00000000-0000-0000-0000-000000000000");
-      await db.from("point_submission_item_fam_counts").delete().neq("id", "00000000-0000-0000-0000-000000000000");
-      await db.from("point_submission_items").delete().neq("id", "00000000-0000-0000-0000-000000000000");
-      await db.from("point_submissions").delete().neq("id", "00000000-0000-0000-0000-000000000000");
-      await db.from("completions").delete().neq("id", "00000000-0000-0000-0000-000000000000");
-      await db.from("member_semesters").delete().neq("id", "00000000-0000-0000-0000-000000000000");
-      await db.from("members").delete().neq("id", "00000000-0000-0000-0000-000000000000");
-      await db.from("tasks").delete().neq("id", "00000000-0000-0000-0000-000000000000");
-      await db.from("fams").delete().neq("id", "00000000-0000-0000-0000-000000000000");
-      await db.from("semesters").delete().neq("id", "00000000-0000-0000-0000-000000000000");
-
-      await seedFall2026();
-      await api.loadAll();
-    } else {
-      saveLocal(DEFAULT_LOCAL);
-      api.setData(DEFAULT_LOCAL);
-      api.setActiveSemId("fall2026");
-    }
-
-    api.showFlash("Tracker reset");
+  if (confirmation !== "DELETE EVERYTHING") {
+    api.showFlash("Tracker reset cancelled", "error");
+    return;
   }
+
+  if (USE_SUPABASE) {
+    const tables = [
+      "fam_point_logs",
+      "point_submission_item_members",
+      "point_submission_item_fam_counts",
+      "point_submission_items",
+      "point_submissions",
+      "completions",
+      "member_semesters",
+      "members",
+      "tasks",
+      "fams",
+      "semesters"
+    ];
+
+    for (const table of tables) {
+      const { error } = await db
+        .from(table)
+        .delete()
+        .neq("id", "00000000-0000-0000-0000-000000000000");
+
+      if (error) {
+        console.error(`Reset failed on ${table}:`, error);
+        api.showFlash(`Reset failed on ${table}: ${error.message}`, "error");
+        return;
+      }
+    }
+
+    await seedFall2026();
+    await api.loadAll();
+  } else {
+    saveLocal(DEFAULT_LOCAL);
+    api.setData(DEFAULT_LOCAL);
+    api.setActiveSemId("fall2026");
+  }
+
+  api.showFlash("Tracker reset");
+}
 
   return h("section", null,
     h("div", { className: "section-head" },
