@@ -479,6 +479,10 @@ const DEFAULT_LOCAL = {
   member_semesters: [],
   tasks: [],
   completions: []
+  point_submissions: [],
+  point_submission_items: [],
+  point_submission_item_fam_counts: [],
+  fam_point_logs: []
 };
 
 function uid(prefix="id") { return prefix + "_" + Math.random().toString(36).slice(2, 10); }
@@ -513,15 +517,41 @@ function App() {
     setLoading(true);
     try {
       if (USE_SUPABASE) {
-        const [semesters, fams, members, memberSemesters, tasks, completions] = await Promise.all([
+        const [
+          semesters,
+          fams,
+          members,
+          memberSemesters,
+          tasks,
+          completions,
+          submissions,
+          submissionItems,
+          submissionCounts,
+          famPointLogs
+        ] = await Promise.all([
           db.from("semesters").select("*").order("created_at", { ascending: true }),
           db.from("fams").select("*").order("slot", { ascending: true }),
           db.from("members").select("*").order("name", { ascending: true }),
           db.from("member_semesters").select("*"),
           db.from("tasks").select("*").order("name", { ascending: true }),
-          db.from("completions").select("*").order("date", { ascending: false })
+          db.from("completions").select("*").order("date", { ascending: false }),
+          db.from("point_submissions").select("*").order("created_at", { ascending: false }),
+          db.from("point_submission_items").select("*"),
+          db.from("point_submission_item_fam_counts").select("*"),
+          db.from("fam_point_logs").select("*")
         ]);
-        const errs = [semesters, fams, members, memberSemesters, tasks, completions].filter(r => r.error);
+        const errs = [
+          semesters,
+          fams,
+          members,
+          memberSemesters,
+          tasks,
+          completions,
+          submissions,
+          submissionItems,
+          submissionCounts,
+          famPointLogs
+        ].filter(r => r.error);
         if (errs.length) throw errs[0].error;
 
         let next = {
@@ -530,7 +560,11 @@ function App() {
           members: members.data || [],
           member_semesters: memberSemesters.data || [],
           tasks: tasks.data || [],
-          completions: completions.data || []
+          completions: completions.data || [],
+          point_submissions: submissions.data || [],
+          point_submission_items: submissionItems.data || [],
+          point_submission_item_fam_counts: submissionCounts.data || [],
+          fam_point_logs: famPointLogs.data || []
         };
 
         if (next.semesters.length === 0) {
@@ -585,9 +619,17 @@ function App() {
   const lifetimePoints = (memberId) => data.completions
     .filter(c => c.member_id === memberId)
     .reduce((sum, c) => sum + (data.tasks.find(t => t.id === c.task_id)?.points || 0), 0);
-  const famPoints = (famId) => data.members
+  const famPoints = (famId) => {
+  const memberBasedPoints = data.members
     .filter(m => getMemberSem(m.id)?.fam_id === famId)
     .reduce((sum, m) => sum + memberPoints(m.id), 0);
+
+  const logBasedPoints = (data.fam_point_logs || [])
+    .filter(log => log.fam_id === famId && log.semester_id === activeSemId)
+    .reduce((sum, log) => sum + Number(log.total_points || 0), 0);
+
+  return memberBasedPoints + logBasedPoints;
+};
 
   const api = {
     data, setData, activeSem, activeSemId, setActiveSemId, activeFams,
@@ -600,6 +642,7 @@ function App() {
     ["members", "Members"],
     ["tasks", "Tasks"],
     ["activities", "Log Points"],
+    ["pending", "Pending Logs"],
     ["settings", "Settings"]
   ];
 
@@ -622,6 +665,7 @@ function App() {
       tab === "members" ? h(MembersPage, api) :
       tab === "tasks" ? h(TasksPage, api) :
       tab === "activities" ? h(ActivitiesPage, api) :
+      tab === "pending" ? h(PendingLogsPage, api) :
       h(SettingsPage, api)
   );
 }
@@ -1086,6 +1130,192 @@ function ProfilePage(api) {
 //  Fam create/rename/delete, semesters, semester reset/delete,
 //  and full tracker reset.
 // ============================================================
+async function updateSubmissionStatus(api, submission, status) {
+  const { error } = await db
+    .from("point_submissions")
+    .update({
+      status,
+      reviewed_at: new Date().toISOString()
+    })
+    .eq("id", submission.id);
+
+  if (error) return api.showFlash(error.message, "error");
+
+  await api.loadAll();
+  api.showFlash("Submission updated");
+}
+
+async function approveSubmission(api, submission) {
+  const items = api.data.point_submission_items
+    .filter(i => i.submission_id === submission.id);
+
+  for (const item of items) {
+    const task = api.data.tasks.find(t => t.id === item.final_task_id);
+    if (!task) continue;
+
+    const counts = api.data.point_submission_item_fam_counts
+      .filter(c => c.item_id === item.id && Number(c.member_count) > 0);
+
+    const rows = counts.map(c => ({
+      submission_item_id: item.id,
+      fam_id: c.fam_id,
+      task_id: item.final_task_id,
+      member_count: Number(c.member_count),
+      points_per_member: Number(task.points),
+      total_points: Number(c.member_count) * Number(task.points),
+      semester_id: submission.semester_id
+    }));
+
+    if (rows.length) {
+      const { error } = await db.from("fam_point_logs").insert(rows);
+      if (error) return api.showFlash(error.message, "error");
+    }
+  }
+
+  await updateSubmissionStatus(api, submission, "approved");
+}
+
+async function updateItemTask(api, itemId, taskId) {
+  const { error } = await db
+    .from("point_submission_items")
+    .update({ final_task_id: taskId || null })
+    .eq("id", itemId);
+
+  if (error) return api.showFlash(error.message, "error");
+  await api.loadAll();
+}
+
+async function updateFamCount(api, countRow, newCount) {
+  const { error } = await db
+    .from("point_submission_item_fam_counts")
+    .update({ member_count: Math.max(0, Number(newCount) || 0) })
+    .eq("id", countRow.id);
+
+  if (error) return api.showFlash(error.message, "error");
+  await api.loadAll();
+}
+
+async function createMissingCount(api, itemId, famId) {
+  const { error } = await db
+    .from("point_submission_item_fam_counts")
+    .insert({ item_id: itemId, fam_id: famId, member_count: 0 });
+
+  if (error) return api.showFlash(error.message, "error");
+  await api.loadAll();
+}
+
+function PendingLogsPage(api) {
+  const submissions = (api.data.point_submissions || [])
+    .filter(s => ["pending", "appealed", "rejected"].includes(s.status))
+    .sort((a, b) => {
+      if (a.status === "appealed" && b.status !== "appealed") return -1;
+      if (a.status !== "appealed" && b.status === "appealed") return 1;
+      return new Date(b.created_at) - new Date(a.created_at);
+    });
+
+  return h("section", null,
+    h("div", { className: "section-head" },
+      h("h2", { className: "section-title" }, "Pending Logs")
+    ),
+
+    submissions.length === 0 && h("div", { className: "empty" }, "No pending logs."),
+
+    submissions.map(sub => {
+      const items = api.data.point_submission_items
+        .filter(i => i.submission_id === sub.id);
+
+      return h("div", { key: sub.id, className: "card", style: { marginBottom: 18 } },
+        h("div", { className: "card-title" },
+          sub.status === "appealed" ? "Appealed Submission" :
+          sub.status === "rejected" ? "Rejected Submission" :
+          "Pending Submission"
+        ),
+
+        h("p", { className: "helper" }, sub.caption || "No caption"),
+
+        h("div", { style: { display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 14 } },
+          (sub.image_urls || []).map(url =>
+            h("img", {
+              key: url,
+              src: url,
+              style: {
+                width: "150px",
+                height: "150px",
+                objectFit: "cover",
+                borderRadius: "12px",
+                border: "1px solid var(--line)"
+              }
+            })
+          )
+        ),
+
+        items.map(item => h(PendingItemEditor, { key: item.id, api, item })),
+
+        h("div", { className: "row-actions", style: { marginTop: 14 } },
+          h("button", {
+            className: "btn btn-dark",
+            onClick: () => approveSubmission(api, sub)
+          }, "Approve"),
+
+          h("button", {
+            className: "btn btn-danger",
+            onClick: () => updateSubmissionStatus(api, sub, "rejected")
+          }, "Reject"),
+
+          sub.status === "rejected" && h("button", {
+            className: "btn",
+            onClick: () => updateSubmissionStatus(api, sub, "appealed")
+          }, "Mark Appealed")
+        )
+      );
+    })
+  );
+}
+
+function PendingItemEditor({ api, item }) {
+  const counts = api.activeFams.map(fam => {
+    const existing = api.data.point_submission_item_fam_counts
+      .find(c => c.item_id === item.id && c.fam_id === fam.id);
+
+    return { fam, existing };
+  });
+
+  return h("div", { className: "card", style: { marginTop: 12, background: "#fbfbfa" } },
+    h("div", { className: "card-title" }, "Activity Item"),
+
+    h("div", { className: "controls" },
+      h("select", {
+        value: item.final_task_id || "",
+        onChange: e => updateItemTask(api, item.id, e.target.value)
+      },
+        h("option", { value: "" }, "Select Task"),
+        api.data.tasks.map(t =>
+          h("option", { key: t.id, value: t.id }, `${t.name} (+${t.points})`)
+        )
+      )
+    ),
+
+    h("div", { className: "grid" },
+      counts.map(({ fam, existing }) =>
+        h("div", { key: fam.id, className: "task-row", style: { borderRadius: 14 } },
+          h("span", null, fam.name),
+          existing
+            ? h("input", {
+                type: "number",
+                min: 0,
+                value: existing.member_count,
+                style: { width: 80 },
+                onChange: e => updateFamCount(api, existing, e.target.value)
+              })
+            : h("button", {
+                className: "btn btn-sm",
+                onClick: () => createMissingCount(api, item.id, fam.id)
+              }, "Add")
+        )
+      )
+    )
+  );
+}
 function SettingsPage(api) {
   const [newSem, setNewSem] = useState("");
   const [newFamNames, setNewFamNames] = useState({});
