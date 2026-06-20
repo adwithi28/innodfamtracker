@@ -1205,8 +1205,7 @@ async function createMissingCount(api, itemId, famId) {
 }
 
 function PendingLogsPage(api) {
-  const submissions = (api.data.point_submissions || [])
-    .filter(s => ["pending", "appealed", "rejected"].includes(s.status))
+  const submissions = (api.data.point_submissions || []);
     .sort((a, b) => {
       if (a.status === "appealed" && b.status !== "appealed") return -1;
       if (a.status !== "appealed" && b.status === "appealed") return 1;
