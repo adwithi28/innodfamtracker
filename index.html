@@ -502,6 +502,36 @@ function saveLocal(data) {
   try { localStorage.setItem(LOCAL_KEY, JSON.stringify(data)); } catch {}
 }
 
+async function seedDefaultTracker() {
+    const semId = DEFAULT_SEMESTER_ID;
+
+    await db.from("semesters").upsert({
+      id: semId,
+      name: DEFAULT_SEMESTER_NAME,
+      is_active: true
+    });
+
+    const { data: existingFams, error: famCheckError } = await db
+      .from("fams")
+      .select("id")
+      .eq("semester_id", semId);
+
+    if (famCheckError) throw famCheckError;
+
+    if (!existingFams || existingFams.length === 0) {
+      const { error: famSeedError } = await db.from("fams").insert(
+        STARTER_FAMS.map((f, i) => ({
+          semester_id: semId,
+          slot: i + 1,
+          name: f.name,
+          color_key: f.color_key
+        }))
+      );
+
+      if (famSeedError) throw famSeedError;
+    }
+  }
+
 // ============================================================
 //  APP SHELL / ROUTING
 //  Handles global state, Supabase/local loading, navigation,
@@ -596,36 +626,6 @@ function App() {
       setActiveSemId((local.semesters.find(s => s.is_active) || local.semesters[0]).id);
     } finally {
       setLoading(false);
-    }
-  }
-
-  async function seedDefaultTracker() {
-    const semId = DEFAULT_SEMESTER_ID;
-
-    await db.from("semesters").upsert({
-      id: semId,
-      name: DEFAULT_SEMESTER_NAME,
-      is_active: true
-    });
-
-    const { data: existingFams, error: famCheckError } = await db
-      .from("fams")
-      .select("id")
-      .eq("semester_id", semId);
-
-    if (famCheckError) throw famCheckError;
-
-    if (!existingFams || existingFams.length === 0) {
-      const { error: famSeedError } = await db.from("fams").insert(
-        STARTER_FAMS.map((f, i) => ({
-          semester_id: semId,
-          slot: i + 1,
-          name: f.name,
-          color_key: f.color_key
-        }))
-      );
-
-      if (famSeedError) throw famSeedError;
     }
   }
 
