@@ -465,16 +465,19 @@ const COLOR_PALETTE = [
 function colorFor(idx) { return COLOR_PALETTE[idx % COLOR_PALETTE.length]; }
 function famMeta(colorKey) { return COLOR_PALETTE.find(c => c.key === colorKey) || COLOR_PALETTE[0]; }
 
+const DEFAULT_SEMESTER_ID = "fall2000";
+const DEFAULT_SEMESTER_NAME = "Fall 2000";
+
 const STARTER_FAMS = [
-  { name: "Maple Fam",   color_key: "blue" },
-  { name: "Willow Fam",  color_key: "tan" },
-  { name: "Cypress Fam", color_key: "green" },
-  { name: "Aspen Fam",   color_key: "red" }
+  { name: "Fam 1", color_key: "blue" },
+  { name: "Fam 2", color_key: "tan" },
+  { name: "Fam 3", color_key: "green" },
+  { name: "Fam 4", color_key: "red" }
 ];
 
 const DEFAULT_LOCAL = {
-  semesters: [{ id: "fall2026", name: "Fall 2026", is_active: true }],
-  fams: STARTER_FAMS.map((f, i) => ({ id: "fam" + (i + 1), semester_id: "fall2026", slot: i + 1, name: f.name, color_key: f.color_key })),
+  semesters: [{ id: DEFAULT_SEMESTER_ID, name: DEFAULT_SEMESTER_NAME, is_active: true }],
+  fams: STARTER_FAMS.map((f, i) => ({ id: "fam" + (i + 1), semester_id: DEFAULT_SEMESTER_ID, slot: i + 1, name: f.name, color_key: f.color_key })),
   members: [],
   member_semesters: [],
   tasks: [],
@@ -507,7 +510,7 @@ function saveLocal(data) {
 function App() {
   const [tab, setTab] = useState("leaderboard");
   const [data, setData] = useState(DEFAULT_LOCAL);
-  const [activeSemId, setActiveSemId] = useState("fall2026");
+  const [activeSemId, setActiveSemId] = useState(DEFAULT_SEMESTER_ID);
   const [flash, setFlash] = useState(null);
   const [loading, setLoading] = useState(true);
   const [profileId, setProfileId] = useState(null);
@@ -573,7 +576,7 @@ function App() {
         };
 
         if (next.semesters.length === 0) {
-          await seedFall2026();
+          await seedDefaultTracker();
           return loadAll();
         }
 
@@ -596,10 +599,34 @@ function App() {
     }
   }
 
-  async function seedFall2026() {
-    const semId = "fall2026";
-    await db.from("semesters").insert({ id: semId, name: "Fall 2026", is_active: true });
-    await db.from("fams").insert(STARTER_FAMS.map((f, i) => ({ semester_id: semId, slot: i + 1, name: f.name, color_key: f.color_key })));
+  async function seedDefaultTracker() {
+    const semId = DEFAULT_SEMESTER_ID;
+
+    await db.from("semesters").upsert({
+      id: semId,
+      name: DEFAULT_SEMESTER_NAME,
+      is_active: true
+    });
+
+    const { data: existingFams, error: famCheckError } = await db
+      .from("fams")
+      .select("id")
+      .eq("semester_id", semId);
+
+    if (famCheckError) throw famCheckError;
+
+    if (!existingFams || existingFams.length === 0) {
+      const { error: famSeedError } = await db.from("fams").insert(
+        STARTER_FAMS.map((f, i) => ({
+          semester_id: semId,
+          slot: i + 1,
+          name: f.name,
+          color_key: f.color_key
+        }))
+      );
+
+      if (famSeedError) throw famSeedError;
+    }
   }
 
   function showFlash(msg, type="success") {
@@ -614,7 +641,7 @@ function App() {
     return next;
   }
 
-  const activeSem = data.semesters.find(s => s.id === activeSemId) || data.semesters[0] || { id: activeSemId, name: "Fall 2026" };
+  const activeSem = data.semesters.find(s => s.id === activeSemId) || data.semesters[0] || { id: DEFAULT_SEMESTER_ID, name: DEFAULT_SEMESTER_NAME };
   const activeFams = data.fams.filter(f => f.semester_id === activeSemId).sort((a,b) => (a.slot || 0) - (b.slot || 0));
   const getFam = (famId) => data.fams.find(f => f.id === famId) || null;
   const getMemberSem = (memberId, semId = activeSemId) => data.member_semesters.find(ms => ms.member_id === memberId && ms.semester_id === semId) || null;
@@ -778,20 +805,68 @@ function MembersPage(api) {
 
   async function addMember() {
     if (!safeName(name)) return api.showFlash("Full name is required", "error");
+
+    const semesterId =
+      api.data.semesters.find(s => s.id === api.activeSemId)?.id ||
+      api.data.semesters.find(s => s.is_active)?.id ||
+      DEFAULT_SEMESTER_ID;
+
+    const selectedFamStillExists = api.activeFams.find(f => f.id === famId);
+    const finalFamId = selectedFamStillExists ? famId : (api.activeFams[0]?.id || null);
+
     if (USE_SUPABASE) {
-      const { data: member, error } = await db.from("members").insert({ name: safeName(name), hex_class: safeName(hex), is_driver: isDriver }).select().single();
+      const { data: semesterExists, error: semError } = await db
+        .from("semesters")
+        .select("id")
+        .eq("id", semesterId)
+        .maybeSingle();
+
+      if (semError) return api.showFlash(semError.message, "error");
+
+      if (!semesterExists) {
+        await seedDefaultTracker();
+        api.setActiveSemId(DEFAULT_SEMESTER_ID);
+      }
+
+      const finalSemesterId = semesterExists ? semesterId : DEFAULT_SEMESTER_ID;
+
+      const { data: member, error } = await db
+        .from("members")
+        .insert({ name: safeName(name), hex_class: safeName(hex), is_driver: isDriver })
+        .select()
+        .single();
+
       if (error) return api.showFlash(error.message, "error");
-      const { error: msErr } = await db.from("member_semesters").insert({ member_id: member.id, semester_id: api.activeSemId, fam_id: famId || null, is_fam_head: isFamHead });
+
+      const { error: msErr } = await db.from("member_semesters").insert({
+        member_id: member.id,
+        semester_id: finalSemesterId,
+        fam_id: finalFamId,
+        is_fam_head: isFamHead
+      });
+
       if (msErr) return api.showFlash(msErr.message, "error");
+
       await api.loadAll();
     } else {
       await api.mutateLocal(d => {
         const id = uid("mem");
-        return { ...d, members: [...d.members, { id, name: safeName(name), hex_class: safeName(hex), is_driver: isDriver }], member_semesters: [...d.member_semesters, { id: uid("ms"), member_id: id, semester_id: api.activeSemId, fam_id: famId || null, is_fam_head: isFamHead }] };
+        return {
+          ...d,
+          members: [...d.members, { id, name: safeName(name), hex_class: safeName(hex), is_driver: isDriver }],
+          member_semesters: [
+            ...d.member_semesters,
+            { id: uid("ms"), member_id: id, semester_id: semesterId, fam_id: finalFamId, is_fam_head: isFamHead }
+          ]
+        };
       });
     }
+
     api.showFlash("Member added");
-    setName(""); setHex(""); setIsDriver(false); setIsFamHead(false);
+    setName("");
+    setHex("");
+    setIsDriver(false);
+    setIsFamHead(false);
   }
 
   async function deleteMember(id) {
@@ -1720,7 +1795,7 @@ function SettingsPage(api) {
     }
 
     if (api.activeSemId === id) {
-      api.setActiveSemId(api.data.semesters.find(s => s.id !== id)?.id || "fall2026");
+      api.setActiveSemId(api.data.semesters.find(s => s.id !== id)?.id || DEFAULT_SEMESTER_ID);
     }
 
     api.showFlash("Semester deleted");
@@ -1745,15 +1820,24 @@ function SettingsPage(api) {
       return;
     }
 
-    await seedFall2026();
+    try {
+      await seedDefaultTracker();
+    } catch (seedError) {
+      console.error("Reset seed failed:", seedError);
+      api.showFlash("Reset worked, but default semester/fams could not be recreated: " + seedError.message, "error");
+      return;
+    }
+
+    api.setActiveSemId(DEFAULT_SEMESTER_ID);
     await api.loadAll();
   } else {
-    saveLocal(DEFAULT_LOCAL);
-    api.setData(DEFAULT_LOCAL);
-    api.setActiveSemId("fall2026");
+    const fresh = JSON.parse(JSON.stringify(DEFAULT_LOCAL));
+    saveLocal(fresh);
+    api.setData(fresh);
+    api.setActiveSemId(DEFAULT_SEMESTER_ID);
   }
 
-  api.showFlash("Tracker reset");
+  api.showFlash("Tracker reset to default");
 }
 
   return h("section", null,
@@ -1836,7 +1920,7 @@ function SettingsPage(api) {
 
     h("div", { className: "card danger-zone" },
       h("div", { className: "card-title" }, "Danger Zone"),
-      h("p", { className: "helper" }, "This fully clears the tracker and returns it to a blank Fall 2026 start."),
+      h("p", { className: "helper" }, "This fully clears the tracker and returns it to a blank Fall 2000 start."),
       h("button", { className: "btn btn-danger", onClick: resetEverything }, "Reset Entire Tracker")
     )
   );
