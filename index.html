@@ -1426,16 +1426,66 @@ function SettingsPage(api) {
   }
 
   async function resetSemester(id) {
-    if (!confirm("Reset this semester? This clears points, fam assignments, and fam heads for this semester only. Member profiles stay saved.")) return;
-    if (USE_SUPABASE) {
-      await db.from("completions").delete().eq("semester_id", id);
-      await db.from("member_semesters").update({ fam_id: null, is_fam_head: false }).eq("semester_id", id);
-      await api.loadAll();
-    } else {
-      await api.mutateLocal(d => ({ ...d, completions: d.completions.filter(c => c.semester_id !== id), member_semesters: d.member_semesters.map(ms => ms.semester_id === id ? { ...ms, fam_id: null, is_fam_head: false } : ms) }));
+  const confirmation = prompt(
+  `Type RESET SEMESTER to reset ${api.semesters.find(s => s.id === id)?.name || "this semester"}`
+);
+
+if (confirmation !== "RESET SEMESTER") {
+  api.showFlash("Semester reset cancelled", "error");
+  return;
+}
+
+  if (USE_SUPABASE) {
+    const submissionsForSemester = api.data.point_submissions
+      .filter(s => s.semester_id === id)
+      .map(s => s.id);
+
+    const itemsForSemester = api.data.point_submission_items
+      .filter(item => submissionsForSemester.includes(item.submission_id))
+      .map(item => item.id);
+
+    if (itemsForSemester.length) {
+      await db.from("point_submission_item_members").delete().in("item_id", itemsForSemester);
+      await db.from("point_submission_item_fam_counts").delete().in("item_id", itemsForSemester);
+      await db.from("point_submission_items").delete().in("id", itemsForSemester);
     }
-    api.showFlash("Semester reset");
+
+    if (submissionsForSemester.length) {
+      await db.from("point_submissions").delete().in("id", submissionsForSemester);
+    }
+
+    await db.from("fam_point_logs").delete().eq("semester_id", id);
+    await db.from("completions").delete().eq("semester_id", id);
+    await db.from("member_semesters").update({ fam_id: null, is_fam_head: false }).eq("semester_id", id);
+
+    await api.loadAll();
+  } else {
+    await api.mutateLocal(d => {
+      const submissionsForSemester = d.point_submissions
+        .filter(s => s.semester_id === id)
+        .map(s => s.id);
+
+      const itemsForSemester = d.point_submission_items
+        .filter(item => submissionsForSemester.includes(item.submission_id))
+        .map(item => item.id);
+
+      return {
+        ...d,
+        completions: d.completions.filter(c => c.semester_id !== id),
+        fam_point_logs: d.fam_point_logs.filter(log => log.semester_id !== id),
+        point_submissions: d.point_submissions.filter(s => s.semester_id !== id),
+        point_submission_items: d.point_submission_items.filter(item => !itemsForSemester.includes(item.id)),
+        point_submission_item_fam_counts: d.point_submission_item_fam_counts.filter(c => !itemsForSemester.includes(c.item_id)),
+        point_submission_item_members: (d.point_submission_item_members || []).filter(m => !itemsForSemester.includes(m.item_id)),
+        member_semesters: d.member_semesters.map(ms =>
+          ms.semester_id === id ? { ...ms, fam_id: null, is_fam_head: false } : ms
+        )
+      };
+    });
   }
+
+  api.showFlash("Semester reset");
+}
 
   async function deleteSemester(id) {
     if (api.data.semesters.length <= 1) return api.showFlash("You need at least one semester", "error");
@@ -1447,18 +1497,43 @@ function SettingsPage(api) {
   }
 
   async function resetEverything() {
-    if (!confirm("Reset the entire tracker? This deletes all members, tasks, semesters, and points.")) return;
-    if (USE_SUPABASE) {
-      await db.from("completions").delete().neq("id", "00000000-0000-0000-0000-000000000000");
-      await db.from("member_semesters").delete().neq("id", "00000000-0000-0000-0000-000000000000");
-      await db.from("members").delete().neq("id", "00000000-0000-0000-0000-000000000000");
-      await db.from("tasks").delete().neq("id", "00000000-0000-0000-0000-000000000000");
-      await db.from("fams").delete().neq("id", "00000000-0000-0000-0000-000000000000");
-      await db.from("semesters").delete().neq("id", "00000000-0000-0000-0000-000000000000");
-      await api.loadAll();
-    } else { saveLocal(DEFAULT_LOCAL); api.setData(DEFAULT_LOCAL); api.setActiveSemId("fall2026"); }
-    api.showFlash("Tracker reset");
+  const confirmation = prompt(
+    'DANGER: This will permanently delete ALL members, tasks, semesters, submissions, fam assignments, and points.\n\nType "DELETE EVERYTHING" to continue.'
+  );
+
+  if (confirmation !== "DELETE EVERYTHING") {
+    api.showFlash("Tracker reset cancelled", "error");
+    return;
   }
+
+  if (USE_SUPABASE) {
+    await db.from("fam_point_logs").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+
+    await db.from("point_submission_item_members").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+    await db.from("point_submission_item_fam_counts").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+    await db.from("point_submission_items").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+    await db.from("point_submissions").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+
+    await db.from("completions").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+
+    await db.from("member_semesters").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+    await db.from("members").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+
+    await db.from("tasks").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+
+    await db.from("fams").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+    await db.from("semesters").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+
+    await seedFall2026();
+    await api.loadAll();
+  } else {
+    saveLocal(DEFAULT_LOCAL);
+    api.setData(DEFAULT_LOCAL);
+    api.setActiveSemId("fall2026");
+  }
+
+  api.showFlash("Tracker reset");
+}
 
   return h("section", null,
     h("div", { className: "section-head" }, h("h2", { className: "section-title" }, "Settings"), h(SemesterPicker, api)),
