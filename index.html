@@ -1347,20 +1347,42 @@ function PendingItemEditor({ api, item }) {
 function SettingsPage(api) {
   const [newSem, setNewSem] = useState("");
   const [newFamNames, setNewFamNames] = useState({});
+  const [adjustFamId, setAdjustFamId] = useState(api.activeFams[0]?.id || "");
+  const [adjustPoints, setAdjustPoints] = useState("");
 
   useEffect(() => {
     const map = {};
     api.activeFams.forEach(f => { map[f.id] = f.name; });
     setNewFamNames(map);
+
+    if (!api.activeFams.find(f => f.id === adjustFamId)) {
+      setAdjustFamId(api.activeFams[0]?.id || "");
+    }
   }, [api.activeSemId, api.activeFams.length]);
 
   async function saveFamNames() {
     if (USE_SUPABASE) {
-      for (const [id, name] of Object.entries(newFamNames)) await db.from("fams").update({ name: safeName(name) || "Fam" }).eq("id", id);
+      for (const [id, name] of Object.entries(newFamNames)) {
+        const { error } = await db
+          .from("fams")
+          .update({ name: safeName(name) || "Fam" })
+          .eq("id", id);
+
+        if (error) return api.showFlash(error.message, "error");
+      }
+
       await api.loadAll();
     } else {
-      await api.mutateLocal(d => ({ ...d, fams: d.fams.map(f => f.semester_id === api.activeSemId ? { ...f, name: safeName(newFamNames[f.id]) || f.name } : f) }));
+      await api.mutateLocal(d => ({
+        ...d,
+        fams: d.fams.map(f =>
+          f.semester_id === api.activeSemId
+            ? { ...f, name: safeName(newFamNames[f.id]) || f.name }
+            : f
+        )
+      }));
     }
+
     api.showFlash("Fam names saved");
   }
 
@@ -1368,206 +1390,454 @@ function SettingsPage(api) {
     const slot = api.activeFams.length + 1;
     const color_key = colorFor(api.activeFams.length).key;
     const name = "New Fam";
+
     if (USE_SUPABASE) {
-      const { error } = await db.from("fams").insert({ semester_id: api.activeSemId, slot, name, color_key });
+      const { error } = await db
+        .from("fams")
+        .insert({ semester_id: api.activeSemId, slot, name, color_key });
+
       if (error) return api.showFlash(error.message, "error");
+
       await api.loadAll();
     } else {
-      await api.mutateLocal(d => ({ ...d, fams: [...d.fams, { id: uid("fam"), semester_id: api.activeSemId, slot, name, color_key }] }));
+      await api.mutateLocal(d => ({
+        ...d,
+        fams: [
+          ...d.fams,
+          { id: uid("fam"), semester_id: api.activeSemId, slot, name, color_key }
+        ]
+      }));
     }
+
     api.showFlash("Fam added");
   }
 
   async function deleteFam(id) {
-    if (api.activeFams.length <= 1) return api.showFlash("You need at least one fam this semester", "error");
-    if (!confirm("Delete this fam? Members assigned to it will become unassigned for this semester.")) return;
+    if (api.activeFams.length <= 1) {
+      return api.showFlash("You need at least one fam this semester", "error");
+    }
+
+    const fam = api.activeFams.find(f => f.id === id);
+    const confirmation = prompt(`Type DELETE ${fam?.name || "FAM"} to delete this fam.`);
+
+    if (confirmation !== `DELETE ${fam?.name || "FAM"}`) {
+      return api.showFlash("Fam delete cancelled", "error");
+    }
+
     if (USE_SUPABASE) {
       await db.from("member_semesters").update({ fam_id: null, is_fam_head: false }).eq("fam_id", id);
+      await db.from("fam_point_logs").delete().eq("fam_id", id);
+      await db.from("point_submission_item_fam_counts").delete().eq("fam_id", id);
+
       const { error } = await db.from("fams").delete().eq("id", id);
       if (error) return api.showFlash(error.message, "error");
+
       await api.loadAll();
     } else {
       await api.mutateLocal(d => ({
         ...d,
         fams: d.fams.filter(f => f.id !== id),
-        member_semesters: d.member_semesters.map(ms => ms.fam_id === id ? { ...ms, fam_id: null, is_fam_head: false } : ms)
+        fam_point_logs: (d.fam_point_logs || []).filter(log => log.fam_id !== id),
+        point_submission_item_fam_counts: (d.point_submission_item_fam_counts || []).filter(c => c.fam_id !== id),
+        member_semesters: d.member_semesters.map(ms =>
+          ms.fam_id === id ? { ...ms, fam_id: null, is_fam_head: false } : ms
+        )
       }));
     }
+
     api.showFlash("Fam deleted");
+  }
+
+  async function applyFamAdjustment() {
+    if (!adjustFamId || !Number(adjustPoints)) {
+      return api.showFlash("Select a fam and enter points", "error");
+    }
+
+    if (USE_SUPABASE) {
+      const { error } = await db.from("fam_point_logs").insert({
+        submission_item_id: null,
+        fam_id: adjustFamId,
+        task_id: null,
+        member_count: 0,
+        points_per_member: 0,
+        total_points: Number(adjustPoints),
+        semester_id: api.activeSemId
+      });
+
+      if (error) return api.showFlash(error.message, "error");
+
+      await api.loadAll();
+    } else {
+      await api.mutateLocal(d => ({
+        ...d,
+        fam_point_logs: [
+          ...(d.fam_point_logs || []),
+          {
+            id: uid("famlog"),
+            submission_item_id: null,
+            fam_id: adjustFamId,
+            task_id: null,
+            member_count: 0,
+            points_per_member: 0,
+            total_points: Number(adjustPoints),
+            semester_id: api.activeSemId,
+            created_at: new Date().toISOString()
+          }
+        ]
+      }));
+    }
+
+    setAdjustPoints("");
+    api.showFlash("Fam points adjusted");
+  }
+
+  async function resetSelectedFamPoints() {
+    if (!adjustFamId) return api.showFlash("Select a fam", "error");
+
+    const fam = api.activeFams.find(f => f.id === adjustFamId);
+    const confirmation = prompt(`Type RESET ${fam?.name || "FAM"} to reset this fam's points to 0.`);
+
+    if (confirmation !== `RESET ${fam?.name || "FAM"}`) {
+      return api.showFlash("Fam reset cancelled", "error");
+    }
+
+    const currentPoints = api.famPoints(adjustFamId);
+
+    if (!currentPoints) {
+      return api.showFlash("This fam already has 0 points");
+    }
+
+    if (USE_SUPABASE) {
+      const { error } = await db.from("fam_point_logs").insert({
+        submission_item_id: null,
+        fam_id: adjustFamId,
+        task_id: null,
+        member_count: 0,
+        points_per_member: 0,
+        total_points: -currentPoints,
+        semester_id: api.activeSemId
+      });
+
+      if (error) return api.showFlash(error.message, "error");
+
+      await api.loadAll();
+    } else {
+      await api.mutateLocal(d => ({
+        ...d,
+        fam_point_logs: [
+          ...(d.fam_point_logs || []),
+          {
+            id: uid("famlog"),
+            submission_item_id: null,
+            fam_id: adjustFamId,
+            task_id: null,
+            member_count: 0,
+            points_per_member: 0,
+            total_points: -currentPoints,
+            semester_id: api.activeSemId,
+            created_at: new Date().toISOString()
+          }
+        ]
+      }));
+    }
+
+    api.showFlash("Fam points reset");
   }
 
   async function createSemester() {
     if (!safeName(newSem)) return api.showFlash("Semester name required", "error");
+
     const id = uid("sem");
-    // New semesters start with the same fam names as the currently active semester
-    // (falling back to the starter set). Members are NOT assigned to any fam —
-    // fam assignments and fam-head status both start fresh each semester.
-    const sourceFams = api.activeFams.length ? api.activeFams : STARTER_FAMS.map((f, i) => ({ slot: i + 1, name: f.name, color_key: f.color_key }));
+    const sourceFams = api.activeFams.length
+      ? api.activeFams
+      : STARTER_FAMS.map((f, i) => ({ slot: i + 1, name: f.name, color_key: f.color_key }));
+
     if (USE_SUPABASE) {
-      const { data: sem, error } = await db.from("semesters").insert({ name: safeName(newSem), is_active: false }).select().single();
+      const { data: sem, error } = await db
+        .from("semesters")
+        .insert({ name: safeName(newSem), is_active: false })
+        .select()
+        .single();
+
       if (error) return api.showFlash(error.message, "error");
-      await db.from("fams").insert(sourceFams.map((f, i) => ({ semester_id: sem.id, slot: f.slot || i + 1, name: f.name, color_key: f.color_key })));
-      const rows = api.data.members.map(m => ({ member_id: m.id, semester_id: sem.id, fam_id: null, is_fam_head: false }));
+
+      await db.from("fams").insert(sourceFams.map((f, i) => ({
+        semester_id: sem.id,
+        slot: f.slot || i + 1,
+        name: f.name,
+        color_key: f.color_key
+      })));
+
+      const rows = api.data.members.map(m => ({
+        member_id: m.id,
+        semester_id: sem.id,
+        fam_id: null,
+        is_fam_head: false
+      }));
+
       if (rows.length) await db.from("member_semesters").insert(rows);
-      await api.loadAll(); api.setActiveSemId(sem.id);
+
+      await api.loadAll();
+      api.setActiveSemId(sem.id);
     } else {
       await api.mutateLocal(d => {
-        const newFams = sourceFams.map((f, i) => ({ id: uid("fam"), semester_id: id, slot: f.slot || i + 1, name: f.name, color_key: f.color_key }));
+        const newFams = sourceFams.map((f, i) => ({
+          id: uid("fam"),
+          semester_id: id,
+          slot: f.slot || i + 1,
+          name: f.name,
+          color_key: f.color_key
+        }));
+
         return {
           ...d,
           semesters: [...d.semesters, { id, name: safeName(newSem), is_active: false }],
           fams: [...d.fams, ...newFams],
-          member_semesters: [...d.member_semesters, ...d.members.map(m => ({ id: uid("ms"), member_id: m.id, semester_id: id, fam_id: null, is_fam_head: false }))]
+          member_semesters: [
+            ...d.member_semesters,
+            ...d.members.map(m => ({
+              id: uid("ms"),
+              member_id: m.id,
+              semester_id: id,
+              fam_id: null,
+              is_fam_head: false
+            }))
+          ]
         };
       });
+
       api.setActiveSemId(id);
     }
-    setNewSem(""); api.showFlash("Semester created. Members start unassigned.");
+
+    setNewSem("");
+    api.showFlash("Semester created. Members start unassigned.");
   }
 
-  async function resetSemester(id) {
-  const confirmation = prompt(
-  `Type RESET SEMESTER to reset ${api.semesters.find(s => s.id === id)?.name || "this semester"}`
-);
-
-if (confirmation !== "RESET SEMESTER") {
-  api.showFlash("Semester reset cancelled", "error");
-  return;
-}
-
-  if (USE_SUPABASE) {
-    const submissionsForSemester = api.data.point_submissions
+  async function clearSemesterData(id) {
+    const submissionsForSemester = (api.data.point_submissions || [])
       .filter(s => s.semester_id === id)
       .map(s => s.id);
 
-    const itemsForSemester = api.data.point_submission_items
+    const itemsForSemester = (api.data.point_submission_items || [])
       .filter(item => submissionsForSemester.includes(item.submission_id))
       .map(item => item.id);
 
-    if (itemsForSemester.length) {
-      await db.from("point_submission_item_members").delete().in("item_id", itemsForSemester);
-      await db.from("point_submission_item_fam_counts").delete().in("item_id", itemsForSemester);
-      await db.from("point_submission_items").delete().in("id", itemsForSemester);
-    }
+    if (USE_SUPABASE) {
+      if (itemsForSemester.length) {
+        await db.from("point_submission_item_members").delete().in("item_id", itemsForSemester);
+        await db.from("point_submission_item_fam_counts").delete().in("item_id", itemsForSemester);
+        await db.from("point_submission_items").delete().in("id", itemsForSemester);
+      }
 
-    if (submissionsForSemester.length) {
-      await db.from("point_submissions").delete().in("id", submissionsForSemester);
-    }
+      if (submissionsForSemester.length) {
+        await db.from("point_submissions").delete().in("id", submissionsForSemester);
+      }
 
-    await db.from("fam_point_logs").delete().eq("semester_id", id);
-    await db.from("completions").delete().eq("semester_id", id);
-    await db.from("member_semesters").update({ fam_id: null, is_fam_head: false }).eq("semester_id", id);
-
-    await api.loadAll();
-  } else {
-    await api.mutateLocal(d => {
-      const submissionsForSemester = d.point_submissions
-        .filter(s => s.semester_id === id)
-        .map(s => s.id);
-
-      const itemsForSemester = d.point_submission_items
-        .filter(item => submissionsForSemester.includes(item.submission_id))
-        .map(item => item.id);
-
-      return {
+      await db.from("fam_point_logs").delete().eq("semester_id", id);
+      await db.from("completions").delete().eq("semester_id", id);
+      await db.from("member_semesters").update({ fam_id: null, is_fam_head: false }).eq("semester_id", id);
+    } else {
+      await api.mutateLocal(d => ({
         ...d,
         completions: d.completions.filter(c => c.semester_id !== id),
-        fam_point_logs: d.fam_point_logs.filter(log => log.semester_id !== id),
-        point_submissions: d.point_submissions.filter(s => s.semester_id !== id),
-        point_submission_items: d.point_submission_items.filter(item => !itemsForSemester.includes(item.id)),
-        point_submission_item_fam_counts: d.point_submission_item_fam_counts.filter(c => !itemsForSemester.includes(c.item_id)),
+        fam_point_logs: (d.fam_point_logs || []).filter(log => log.semester_id !== id),
+        point_submissions: (d.point_submissions || []).filter(s => s.semester_id !== id),
+        point_submission_items: (d.point_submission_items || []).filter(item => !itemsForSemester.includes(item.id)),
+        point_submission_item_fam_counts: (d.point_submission_item_fam_counts || []).filter(c => !itemsForSemester.includes(c.item_id)),
         point_submission_item_members: (d.point_submission_item_members || []).filter(m => !itemsForSemester.includes(m.item_id)),
         member_semesters: d.member_semesters.map(ms =>
           ms.semester_id === id ? { ...ms, fam_id: null, is_fam_head: false } : ms
         )
-      };
-    });
+      }));
+    }
   }
 
-  api.showFlash("Semester reset");
-}
+  async function resetSemester(id) {
+    const semName = api.data.semesters.find(s => s.id === id)?.name || "this semester";
+    const confirmation = prompt(`Type RESET ${semName} to reset this semester.`);
+
+    if (confirmation !== `RESET ${semName}`) {
+      return api.showFlash("Semester reset cancelled", "error");
+    }
+
+    await clearSemesterData(id);
+    await api.loadAll();
+
+    api.showFlash("Semester reset");
+  }
 
   async function deleteSemester(id) {
-    if (api.data.semesters.length <= 1) return api.showFlash("You need at least one semester", "error");
-    if (!confirm("Delete this semester? Member profiles stay saved.")) return;
-    if (USE_SUPABASE) { await db.from("semesters").delete().eq("id", id); await api.loadAll(); }
-    else await api.mutateLocal(d => ({ ...d, semesters: d.semesters.filter(s => s.id !== id), fams: d.fams.filter(f => f.semester_id !== id), member_semesters: d.member_semesters.filter(ms => ms.semester_id !== id), completions: d.completions.filter(c => c.semester_id !== id) }));
-    if (api.activeSemId === id) api.setActiveSemId(api.data.semesters.find(s => s.id !== id)?.id || "fall2026");
+    if (api.data.semesters.length <= 1) {
+      return api.showFlash("You need at least one semester", "error");
+    }
+
+    const semName = api.data.semesters.find(s => s.id === id)?.name || "this semester";
+    const confirmation = prompt(`Type DELETE ${semName} to delete this semester.`);
+
+    if (confirmation !== `DELETE ${semName}`) {
+      return api.showFlash("Semester delete cancelled", "error");
+    }
+
+    const submissionsForSemester = (api.data.point_submissions || [])
+      .filter(s => s.semester_id === id)
+      .map(s => s.id);
+
+    const itemsForSemester = (api.data.point_submission_items || [])
+      .filter(item => submissionsForSemester.includes(item.submission_id))
+      .map(item => item.id);
+
+    if (USE_SUPABASE) {
+      if (itemsForSemester.length) {
+        await db.from("point_submission_item_members").delete().in("item_id", itemsForSemester);
+        await db.from("point_submission_item_fam_counts").delete().in("item_id", itemsForSemester);
+        await db.from("point_submission_items").delete().in("id", itemsForSemester);
+      }
+
+      if (submissionsForSemester.length) {
+        await db.from("point_submissions").delete().in("id", submissionsForSemester);
+      }
+
+      await db.from("fam_point_logs").delete().eq("semester_id", id);
+      await db.from("completions").delete().eq("semester_id", id);
+      await db.from("member_semesters").delete().eq("semester_id", id);
+      await db.from("fams").delete().eq("semester_id", id);
+      await db.from("semesters").delete().eq("id", id);
+
+      await api.loadAll();
+    } else {
+      await api.mutateLocal(d => ({
+        ...d,
+        semesters: d.semesters.filter(s => s.id !== id),
+        fams: d.fams.filter(f => f.semester_id !== id),
+        member_semesters: d.member_semesters.filter(ms => ms.semester_id !== id),
+        completions: d.completions.filter(c => c.semester_id !== id),
+        fam_point_logs: (d.fam_point_logs || []).filter(log => log.semester_id !== id),
+        point_submissions: (d.point_submissions || []).filter(s => s.semester_id !== id),
+        point_submission_items: (d.point_submission_items || []).filter(item => !itemsForSemester.includes(item.id)),
+        point_submission_item_fam_counts: (d.point_submission_item_fam_counts || []).filter(c => !itemsForSemester.includes(c.item_id)),
+        point_submission_item_members: (d.point_submission_item_members || []).filter(m => !itemsForSemester.includes(m.item_id))
+      }));
+    }
+
+    if (api.activeSemId === id) {
+      api.setActiveSemId(api.data.semesters.find(s => s.id !== id)?.id || "fall2026");
+    }
+
     api.showFlash("Semester deleted");
   }
 
   async function resetEverything() {
-  const confirmation = prompt(
-    'DANGER: This will permanently delete ALL members, tasks, semesters, submissions, fam assignments, and points.\n\nType "DELETE EVERYTHING" to continue.'
-  );
+    const confirmation = prompt(
+      'DANGER: This will permanently delete ALL members, tasks, semesters, submissions, fam assignments, and points.\n\nType "DELETE EVERYTHING" to continue.'
+    );
 
-  if (confirmation !== "DELETE EVERYTHING") {
-    api.showFlash("Tracker reset cancelled", "error");
-    return;
+    if (confirmation !== "DELETE EVERYTHING") {
+      api.showFlash("Tracker reset cancelled", "error");
+      return;
+    }
+
+    if (USE_SUPABASE) {
+      await db.from("fam_point_logs").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+      await db.from("point_submission_item_members").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+      await db.from("point_submission_item_fam_counts").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+      await db.from("point_submission_items").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+      await db.from("point_submissions").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+      await db.from("completions").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+      await db.from("member_semesters").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+      await db.from("members").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+      await db.from("tasks").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+      await db.from("fams").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+      await db.from("semesters").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+
+      await seedFall2026();
+      await api.loadAll();
+    } else {
+      saveLocal(DEFAULT_LOCAL);
+      api.setData(DEFAULT_LOCAL);
+      api.setActiveSemId("fall2026");
+    }
+
+    api.showFlash("Tracker reset");
   }
-
-  if (USE_SUPABASE) {
-    await db.from("fam_point_logs").delete().neq("id", "00000000-0000-0000-0000-000000000000");
-
-    await db.from("point_submission_item_members").delete().neq("id", "00000000-0000-0000-0000-000000000000");
-    await db.from("point_submission_item_fam_counts").delete().neq("id", "00000000-0000-0000-0000-000000000000");
-    await db.from("point_submission_items").delete().neq("id", "00000000-0000-0000-0000-000000000000");
-    await db.from("point_submissions").delete().neq("id", "00000000-0000-0000-0000-000000000000");
-
-    await db.from("completions").delete().neq("id", "00000000-0000-0000-0000-000000000000");
-
-    await db.from("member_semesters").delete().neq("id", "00000000-0000-0000-0000-000000000000");
-    await db.from("members").delete().neq("id", "00000000-0000-0000-0000-000000000000");
-
-    await db.from("tasks").delete().neq("id", "00000000-0000-0000-0000-000000000000");
-
-    await db.from("fams").delete().neq("id", "00000000-0000-0000-0000-000000000000");
-    await db.from("semesters").delete().neq("id", "00000000-0000-0000-0000-000000000000");
-
-    await seedFall2026();
-    await api.loadAll();
-  } else {
-    saveLocal(DEFAULT_LOCAL);
-    api.setData(DEFAULT_LOCAL);
-    api.setActiveSemId("fall2026");
-  }
-
-  api.showFlash("Tracker reset");
-}
 
   return h("section", null,
-    h("div", { className: "section-head" }, h("h2", { className: "section-title" }, "Settings"), h(SemesterPicker, api)),
+    h("div", { className: "section-head" },
+      h("h2", { className: "section-title" }, "Settings"),
+      h(SemesterPicker, api)
+    ),
+
     h("div", { className: "grid two-col" },
       h("div", { className: "card" },
         h("div", { className: "card-title" }, "Fams — " + api.activeSem.name),
-        h("p", { className: "helper" }, "Add, rename, or remove fams for this semester. Each new fam is assigned the next color automatically."),
-        h("div", { className: "grid" }, api.activeFams.map(f => h("div", { key: f.id, className: "fam-edit-row" },
-          h("span", { className: "fam-swatch", style: { background: famMeta(f.color_key).bar } }),
-          h("input", { value: newFamNames[f.id] ?? f.name, onChange: e => setNewFamNames(p => ({ ...p, [f.id]: e.target.value })) }),
-          h("button", { className: "btn btn-sm btn-danger", onClick: () => deleteFam(f.id) }, "X")
-        ))),
+        h("p", { className: "helper" }, "Add, rename, remove, or manually adjust fams for this semester."),
+
+        h("div", { className: "grid" }, api.activeFams.map(f =>
+          h("div", { key: f.id, className: "fam-edit-row" },
+            h("span", { className: "fam-swatch", style: { background: famMeta(f.color_key).bar } }),
+            h("input", {
+              value: newFamNames[f.id] ?? f.name,
+              onChange: e => setNewFamNames(p => ({ ...p, [f.id]: e.target.value }))
+            }),
+            h("span", { className: "points-text" }, api.famPoints(f.id) + " pts"),
+            h("button", { className: "btn btn-sm btn-danger", onClick: () => deleteFam(f.id) }, "X")
+          )
+        )),
+
         api.activeFams.length === 0 && h("div", { className: "empty" }, "No fams yet — add one below."),
+
         h("div", { className: "row-actions", style: { marginTop: 14, justifyContent: "flex-start" } },
           h("button", { className: "btn btn-dark", onClick: saveFamNames }, "Save Names"),
           h("button", { className: "btn", onClick: addFam }, "+ Add Fam")
         )
       ),
+
       h("div", { className: "card" },
-        h("div", { className: "card-title" }, "Semesters"),
-        h("div", { className: "quick-add", style: { marginBottom: 18, justifyContent: "flex-start" } },
-          h("input", { value: newSem, onChange: e => setNewSem(e.target.value), placeholder: "Spring 2027" }),
-          h("button", { className: "btn btn-dark", onClick: createSemester }, "Create")
-        ),
-        h("div", { className: "grid" }, api.data.semesters.map(s => h("div", { key: s.id, className: "semester-row" },
+        h("div", { className: "card-title" }, "Fam Point Management"),
+        h("p", { className: "helper" }, "Use positive numbers to add points and negative numbers to subtract points. Reset brings one fam to 0 without affecting other fams."),
+
+        h("div", { className: "controls" },
+          h("select", {
+            value: adjustFamId,
+            onChange: e => setAdjustFamId(e.target.value)
+          },
+            api.activeFams.map(f =>
+              h("option", { key: f.id, value: f.id }, f.name + " — " + api.famPoints(f.id) + " pts")
+            )
+          ),
+
+          h("input", {
+            className: "tiny",
+            type: "number",
+            value: adjustPoints,
+            onChange: e => setAdjustPoints(e.target.value),
+            placeholder: "+/- Points"
+          }),
+
+          h("button", { className: "btn btn-dark", onClick: applyFamAdjustment }, "Apply"),
+          h("button", { className: "btn btn-danger", onClick: resetSelectedFamPoints }, "Reset Fam")
+        )
+      )
+    ),
+
+    h("div", { className: "card", style: { marginTop: 18 } },
+      h("div", { className: "card-title" }, "Semesters"),
+      h("div", { className: "quick-add", style: { marginBottom: 18, justifyContent: "flex-start" } },
+        h("input", { value: newSem, onChange: e => setNewSem(e.target.value), placeholder: "Spring 2027" }),
+        h("button", { className: "btn btn-dark", onClick: createSemester }, "Create")
+      ),
+
+      h("div", { className: "grid" }, api.data.semesters.map(s =>
+        h("div", { key: s.id, className: "semester-row" },
           h("span", null, s.name),
           h("div", { className: "row-actions" },
             h("button", { className: "btn btn-sm", onClick: () => api.setActiveSemId(s.id) }, s.id === api.activeSemId ? "Active" : "Switch"),
             h("button", { className: "btn btn-sm", onClick: () => resetSemester(s.id) }, "Reset"),
             h("button", { className: "btn btn-sm btn-danger", onClick: () => deleteSemester(s.id) }, "Delete")
           )
-        )))
-      )
+        )
+      ))
     ),
+
     h("div", { className: "card danger-zone" },
       h("div", { className: "card-title" }, "Danger Zone"),
       h("p", { className: "helper" }, "This fully clears the tracker and returns it to a blank Fall 2026 start."),
@@ -1575,6 +1845,7 @@ if (confirmation !== "RESET SEMESTER") {
     )
   );
 }
+
 
 // ============================================================
 //  MOUNT REACT APP
