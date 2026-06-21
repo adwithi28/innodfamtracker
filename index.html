@@ -480,6 +480,7 @@ const DEFAULT_LOCAL = {
   fams: STARTER_FAMS.map((f, i) => ({ id: "fam" + (i + 1), semester_id: DEFAULT_SEMESTER_ID, slot: i + 1, name: f.name, color_key: f.color_key })),
   members: [],
   member_semesters: [],
+  member_relationships: [],
   tasks: [],
   completions: [],
   point_submissions: [],
@@ -505,11 +506,13 @@ function saveLocal(data) {
 async function seedDefaultTracker() {
     const semId = DEFAULT_SEMESTER_ID;
 
-    await db.from("semesters").upsert({
+    const { error: semSeedError } = await db.from("semesters").upsert({
       id: semId,
       name: DEFAULT_SEMESTER_NAME,
       is_active: true
     });
+
+    if (semSeedError) throw semSeedError;
 
     const { data: existingFams, error: famCheckError } = await db
       .from("fams")
@@ -556,6 +559,7 @@ function App() {
           fams,
           members,
           memberSemesters,
+          memberRelationships,
           tasks,
           completions,
           submissions,
@@ -568,6 +572,7 @@ function App() {
           db.from("fams").select("*").order("slot", { ascending: true }),
           db.from("members").select("*").order("name", { ascending: true }),
           db.from("member_semesters").select("*"),
+          db.from("member_relationships").select("*"),
           db.from("tasks").select("*").order("name", { ascending: true }),
           db.from("completions").select("*").order("date", { ascending: false }),
           db.from("point_submissions").select("*").order("created_at", { ascending: false }),
@@ -581,6 +586,7 @@ function App() {
           fams,
           members,
           memberSemesters,
+          memberRelationships,
           tasks,
           completions,
           submissions,
@@ -596,6 +602,7 @@ function App() {
           fams: fams.data || [],
           members: members.data || [],
           member_semesters: memberSemesters.data || [],
+          member_relationships: memberRelationships.data || [],
           tasks: tasks.data || [],
           completions: completions.data || [],
           point_submissions: submissions.data || [],
@@ -782,7 +789,7 @@ function MembersPage(api) {
   const [isDriver, setIsDriver] = useState(false);
   const [isFamHead, setIsFamHead] = useState(false);
 
-  useEffect(() => { if (!api.activeFams.find(f => f.id === famId)) setFamId(api.activeFams[0]?.id || ""); }, [api.activeSemId, api.activeFams.length]);
+  useEffect(() => { if (famId && !api.activeFams.find(f => f.id === famId)) setFamId(""); }, [api.activeSemId, api.activeFams.length]);
 
   const hexClasses = [...new Set(api.data.members.map(m => m.hex_class).filter(Boolean))].sort();
 
@@ -811,8 +818,8 @@ function MembersPage(api) {
       api.data.semesters.find(s => s.is_active)?.id ||
       DEFAULT_SEMESTER_ID;
 
-    const selectedFamStillExists = api.activeFams.find(f => f.id === famId);
-    const finalFamId = selectedFamStillExists ? famId : (api.activeFams[0]?.id || null);
+    const selectedFamStillExists = famId ? api.activeFams.find(f => f.id === famId) : null;
+    const finalFamId = selectedFamStillExists ? famId : null;
 
     if (USE_SUPABASE) {
       const { data: semesterExists, error: semError } = await db
@@ -872,11 +879,12 @@ function MembersPage(api) {
   async function deleteMember(id) {
     if (!confirm("Delete this member? This removes their profile and all point history.")) return;
     if (USE_SUPABASE) {
+      await db.from("member_relationships").delete().or(`member_id.eq.${id},related_member_id.eq.${id}`);
       const { error } = await db.from("members").delete().eq("id", id);
       if (error) return api.showFlash(error.message, "error");
       await api.loadAll();
     } else {
-      await api.mutateLocal(d => ({ ...d, members: d.members.filter(m => m.id !== id), member_semesters: d.member_semesters.filter(ms => ms.member_id !== id), completions: d.completions.filter(c => c.member_id !== id) }));
+      await api.mutateLocal(d => ({ ...d, members: d.members.filter(m => m.id !== id), member_semesters: d.member_semesters.filter(ms => ms.member_id !== id), member_relationships: (d.member_relationships || []).filter(r => r.member_id !== id && r.related_member_id !== id), completions: d.completions.filter(c => c.member_id !== id) }));
     }
     api.showFlash("Member deleted");
   }
@@ -1017,18 +1025,71 @@ function ActivitiesPage(api) {
   const [date, setDate] = useState(today());
   const [selected, setSelected] = useState([]);
 
-  const assignedMembers = api.data.members.filter(m => api.getMemberSem(m.id)?.fam_id);
+  const [famAwardId, setFamAwardId] = useState(api.activeFams[0]?.id || "");
+  const [famAwardPoints, setFamAwardPoints] = useState("");
+  const [famAwardNote, setFamAwardNote] = useState("");
+
+  useEffect(() => {
+    if (famAwardId && !api.activeFams.find(f => f.id === famAwardId)) {
+      setFamAwardId(api.activeFams[0]?.id || "");
+    }
+  }, [api.activeSemId, api.activeFams.length]);
+
+  // Important: all members can earn individual points, even if they are unassigned.
+  const awardableMembers = api.data.members;
 
   async function insertCompletions(rows) {
     if (!rows.length) return;
+
     if (USE_SUPABASE) {
       const { error } = await db.from("completions").insert(rows);
       if (error) return api.showFlash(error.message, "error");
       await api.loadAll();
     } else {
-      await api.mutateLocal(d => ({ ...d, completions: [...d.completions, ...rows.map(r => ({ ...r, id: uid("comp") }))] }));
+      await api.mutateLocal(d => ({
+        ...d,
+        completions: [
+          ...d.completions,
+          ...rows.map(r => ({ ...r, id: uid("comp") }))
+        ]
+      }));
     }
+
     api.showFlash("Points assigned");
+  }
+
+  async function insertFamAward() {
+    if (!famAwardId || !Number(famAwardPoints)) {
+      return api.showFlash("Select a fam and enter points", "error");
+    }
+
+    const row = {
+      submission_item_id: null,
+      fam_id: famAwardId,
+      task_id: null,
+      member_count: 0,
+      points_per_member: 0,
+      total_points: Number(famAwardPoints),
+      semester_id: api.activeSemId
+    };
+
+    if (USE_SUPABASE) {
+      const { error } = await db.from("fam_point_logs").insert(row);
+      if (error) return api.showFlash(error.message, "error");
+      await api.loadAll();
+    } else {
+      await api.mutateLocal(d => ({
+        ...d,
+        fam_point_logs: [
+          ...(d.fam_point_logs || []),
+          { ...row, id: uid("famlog"), created_at: new Date().toISOString(), note: famAwardNote }
+        ]
+      }));
+    }
+
+    setFamAwardPoints("");
+    setFamAwardNote("");
+    api.showFlash("Fam points assigned");
   }
 
   function assignSingle() {
@@ -1044,43 +1105,74 @@ function ActivitiesPage(api) {
   }
 
   const recent = [...api.data.completions].filter(c => c.semester_id === api.activeSemId).slice(0, 20);
+  const recentFamLogs = [...(api.data.fam_point_logs || [])].filter(l => l.semester_id === api.activeSemId && !l.submission_item_id).slice(0, 10);
 
   return h("section", null,
     h("div", { className: "section-head" }, h("h2", { className: "section-title" }, "Log Points"), h(SemesterPicker, api)),
+
     h("div", { className: "controls" },
-      h("button", { className: "btn " + (mode === "bulk" ? "btn-dark" : ""), onClick: () => setMode("bulk") }, "Bulk Award"),
-      h("button", { className: "btn " + (mode === "single" ? "btn-dark" : ""), onClick: () => setMode("single") }, "Single Award")
+      h("button", { className: "btn " + (mode === "bulk" ? "btn-dark" : ""), onClick: () => setMode("bulk") }, "Bulk Member Award"),
+      h("button", { className: "btn " + (mode === "single" ? "btn-dark" : ""), onClick: () => setMode("single") }, "Single Member Award"),
+      h("button", { className: "btn " + (mode === "fam" ? "btn-dark" : ""), onClick: () => setMode("fam") }, "Direct Fam Award")
     ),
+
     mode === "single" ? h("div", { className: "card" },
-      h("div", { className: "card-title" }, "Single Award"),
+      h("div", { className: "card-title" }, "Single Member Award"),
+      h("p", { className: "helper" }, "Members can earn individual points even if they are not assigned to a fam yet. If they join a fam later, their semester points will count toward that fam."),
       h("div", { className: "controls" },
-        h("select", { value: memberId, onChange: e => setMemberId(e.target.value) }, h("option", { value: "" }, "Member"), assignedMembers.map(m => h("option", { key: m.id, value: m.id }, m.name))),
+        h("select", { value: memberId, onChange: e => setMemberId(e.target.value) },
+          h("option", { value: "" }, "Member"),
+          awardableMembers.map(m => {
+            const fam = api.getFam(api.getMemberSem(m.id)?.fam_id);
+            return h("option", { key: m.id, value: m.id }, m.name + " — " + (fam?.name || "Unassigned"));
+          })
+        ),
         h("select", { value: taskId, onChange: e => setTaskId(e.target.value) }, h("option", { value: "" }, "Task"), api.data.tasks.map(t => h("option", { key: t.id, value: t.id }, t.name + " (+" + t.points + ")"))),
         h("input", { type: "date", value: date, onChange: e => setDate(e.target.value) }),
         h("button", { className: "btn btn-dark", onClick: assignSingle }, "Assign")
       )
+    ) : mode === "fam" ? h("div", { className: "card" },
+      h("div", { className: "card-title" }, "Direct Fam Award"),
+      h("p", { className: "helper" }, "Use this for activities where the fam earns points as a whole and no individual member should receive points."),
+      h("div", { className: "controls" },
+        h("select", { value: famAwardId, onChange: e => setFamAwardId(e.target.value) },
+          h("option", { value: "" }, "Fam"),
+          api.activeFams.map(f => h("option", { key: f.id, value: f.id }, f.name + " — " + api.famPoints(f.id) + " pts"))
+        ),
+        h("input", { className: "tiny", type: "number", value: famAwardPoints, onChange: e => setFamAwardPoints(e.target.value), placeholder: "+/- Points" }),
+        h("input", { className: "compact", value: famAwardNote, onChange: e => setFamAwardNote(e.target.value), placeholder: "Optional note" }),
+        h("button", { className: "btn btn-dark", onClick: insertFamAward }, "Assign")
+      ),
+      h("div", { className: "helper" }, "Recent direct fam awards:"),
+      recentFamLogs.length === 0
+        ? h("div", { className: "empty" }, "No direct fam awards yet.")
+        : h("table", { className: "table" },
+            h("thead", null, h("tr", null, h("th", null, "Fam"), h("th", null, "Points"))),
+            h("tbody", null, recentFamLogs.map(log => h("tr", { key: log.id }, h("td", null, api.getFam(log.fam_id)?.name || "Deleted Fam"), h("td", null, Number(log.total_points) > 0 ? "+" + log.total_points : log.total_points))))
+          )
     ) : h("div", { className: "card" },
-      h("div", { className: "card-title" }, "Bulk Award"),
-      h("p", { className: "helper" }, "Choose one task, select every member who completed it, then assign points to everyone at once."),
+      h("div", { className: "card-title" }, "Bulk Member Award"),
+      h("p", { className: "helper" }, "Choose one task and select every member who completed it. Unassigned members can still earn points here."),
       h("div", { className: "controls" },
         h("select", { value: taskId, onChange: e => setTaskId(e.target.value) }, h("option", { value: "" }, "Task"), api.data.tasks.map(t => h("option", { key: t.id, value: t.id }, t.name + " (+" + t.points + ")"))),
         h("input", { type: "date", value: date, onChange: e => setDate(e.target.value) }),
-        h("button", { className: "btn", onClick: () => setSelected(assignedMembers.map(m => m.id)) }, "Select All"),
+        h("button", { className: "btn", onClick: () => setSelected(awardableMembers.map(m => m.id)) }, "Select All"),
         h("button", { className: "btn", onClick: () => setSelected([]) }, "Clear"),
         h("button", { className: "btn btn-dark", onClick: assignBulk }, "Assign To " + selected.length + " Members")
       ),
-      h("div", { className: "bulk-grid" }, assignedMembers.map(m => {
+      h("div", { className: "bulk-grid" }, awardableMembers.map(m => {
         const checked = selected.includes(m.id);
         const fam = api.getFam(api.getMemberSem(m.id)?.fam_id);
         return h("label", { key: m.id, className: "select-member" },
           h("input", { type: "checkbox", checked, onChange: e => setSelected(prev => e.target.checked ? [...prev, m.id] : prev.filter(id => id !== m.id)) }),
           h("span", null, m.name),
-          h("span", { className: "muted" }, fam ? fam.name : "")
+          h("span", { className: "muted" }, fam ? fam.name : "Unassigned")
         );
       }))
     ),
+
     h("div", { className: "card", style: { marginTop: 16 } },
-      h("div", { className: "card-title" }, "Recent Activity"),
+      h("div", { className: "card-title" }, "Recent Member Activity"),
       recent.length === 0 ? h("div", { className: "empty" }, "No activity logged yet.") : h(ActivityTable, { api, rows: recent })
     )
   );
@@ -1109,10 +1201,29 @@ function ActivityTable({ api, rows }) {
 function ProfilePage(api) {
   const m = api.member;
   if (!m) return h("div", { className: "empty" }, "Member not found.");
+
   const ms = api.getMemberSem(m.id);
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState(null);
+  const [relMemberId, setRelMemberId] = useState("");
+  const [relType, setRelType] = useState("big");
+
   const history = api.data.completions.filter(c => c.member_id === m.id);
+
+  const relationships = (api.data.member_relationships || [])
+    .filter(r => r.member_id === m.id && (!r.semester_id || r.semester_id === api.activeSemId));
+
+  const bigs = relationships
+    .filter(r => r.relationship_type === "big")
+    .map(r => api.data.members.find(x => x.id === r.related_member_id))
+    .filter(Boolean);
+
+  const littles = relationships
+    .filter(r => r.relationship_type === "little")
+    .map(r => api.data.members.find(x => x.id === r.related_member_id))
+    .filter(Boolean);
+
+  const relationshipOptions = api.data.members.filter(x => x.id !== m.id);
 
   function startEdit() {
     setForm({
@@ -1127,18 +1238,34 @@ function ProfilePage(api) {
 
   async function saveEdit() {
     if (!safeName(form.name)) return api.showFlash("Name is required", "error");
-    const memberPatch = { name: safeName(form.name), hex_class: safeName(form.hex_class), is_driver: form.is_driver };
-    const semPatch = { fam_id: form.fam_id || null, is_fam_head: form.is_fam_head };
+
+    const memberPatch = {
+      name: safeName(form.name),
+      hex_class: safeName(form.hex_class),
+      is_driver: form.is_driver
+    };
+
+    const semPatch = {
+      fam_id: form.fam_id || null,
+      is_fam_head: form.is_fam_head
+    };
+
     if (USE_SUPABASE) {
       const { error: mErr } = await db.from("members").update(memberPatch).eq("id", m.id);
       if (mErr) return api.showFlash(mErr.message, "error");
+
       if (ms) {
         const { error: msErr } = await db.from("member_semesters").update(semPatch).eq("id", ms.id);
         if (msErr) return api.showFlash(msErr.message, "error");
       } else {
-        const { error: insErr } = await db.from("member_semesters").insert({ member_id: m.id, semester_id: api.activeSemId, ...semPatch });
+        const { error: insErr } = await db.from("member_semesters").insert({
+          member_id: m.id,
+          semester_id: api.activeSemId,
+          ...semPatch
+        });
         if (insErr) return api.showFlash(insErr.message, "error");
       }
+
       await api.loadAll();
     } else {
       await api.mutateLocal(d => ({
@@ -1149,19 +1276,120 @@ function ProfilePage(api) {
           : [...d.member_semesters, { id: uid("ms"), member_id: m.id, semester_id: api.activeSemId, ...semPatch }]
       }));
     }
+
     setEditing(false);
     api.showFlash("Profile updated");
   }
 
+  async function addRelationship() {
+    if (!relMemberId) return api.showFlash("Select a member", "error");
+
+    const opposite = relType === "big" ? "little" : "big";
+    const rows = [
+      {
+        member_id: m.id,
+        related_member_id: relMemberId,
+        relationship_type: relType,
+        semester_id: api.activeSemId
+      },
+      {
+        member_id: relMemberId,
+        related_member_id: m.id,
+        relationship_type: opposite,
+        semester_id: api.activeSemId
+      }
+    ];
+
+    if (USE_SUPABASE) {
+      await db.from("member_relationships")
+        .delete()
+        .eq("member_id", m.id)
+        .eq("related_member_id", relMemberId)
+        .eq("semester_id", api.activeSemId);
+
+      await db.from("member_relationships")
+        .delete()
+        .eq("member_id", relMemberId)
+        .eq("related_member_id", m.id)
+        .eq("semester_id", api.activeSemId);
+
+      const { error } = await db.from("member_relationships").insert(rows);
+      if (error) return api.showFlash(error.message, "error");
+
+      await api.loadAll();
+    } else {
+      await api.mutateLocal(d => ({
+        ...d,
+        member_relationships: [
+          ...(d.member_relationships || []).filter(r =>
+            !(
+              r.semester_id === api.activeSemId &&
+              ((r.member_id === m.id && r.related_member_id === relMemberId) ||
+               (r.member_id === relMemberId && r.related_member_id === m.id))
+            )
+          ),
+          ...rows.map(r => ({ ...r, id: uid("rel") }))
+        ]
+      }));
+    }
+
+    setRelMemberId("");
+    api.showFlash("Relationship added");
+  }
+
+  async function removeRelationship(relatedMemberId) {
+    if (USE_SUPABASE) {
+      const { error: err1 } = await db.from("member_relationships")
+        .delete()
+        .eq("member_id", m.id)
+        .eq("related_member_id", relatedMemberId)
+        .eq("semester_id", api.activeSemId);
+
+      if (err1) return api.showFlash(err1.message, "error");
+
+      const { error: err2 } = await db.from("member_relationships")
+        .delete()
+        .eq("member_id", relatedMemberId)
+        .eq("related_member_id", m.id)
+        .eq("semester_id", api.activeSemId);
+
+      if (err2) return api.showFlash(err2.message, "error");
+
+      await api.loadAll();
+    } else {
+      await api.mutateLocal(d => ({
+        ...d,
+        member_relationships: (d.member_relationships || []).filter(r =>
+          !(
+            r.semester_id === api.activeSemId &&
+            ((r.member_id === m.id && r.related_member_id === relatedMemberId) ||
+             (r.member_id === relatedMemberId && r.related_member_id === m.id))
+          )
+        )
+      }));
+    }
+
+    api.showFlash("Relationship removed");
+  }
+
   return h("section", null,
     h("button", { className: "btn", style: { marginBottom: 18 }, onClick: () => api.setProfileId(null) }, "← Back"),
+
     h("div", { className: "profile-layout" },
       h("div", { className: "card" },
         h("div", { className: "avatar avatar-lg" }, initials(editing ? form.name : m.name)),
+
         editing ? h("div", { className: "grid", style: { marginTop: 16 } },
-          h("div", null, h("div", { className: "label" }, "Full Name"), h("input", { style: { width: "100%" }, value: form.name, onChange: e => setForm(f => ({ ...f, name: e.target.value })) })),
-          h("div", null, h("div", { className: "label" }, "Hex Class"), h("input", { style: { width: "100%" }, value: form.hex_class, onChange: e => setForm(f => ({ ...f, hex_class: e.target.value })) })),
-          h("div", null, h("div", { className: "label" }, "Fam (" + api.activeSem.name + ")"),
+          h("div", null,
+            h("div", { className: "label" }, "Full Name"),
+            h("input", { style: { width: "100%" }, value: form.name, onChange: e => setForm(f => ({ ...f, name: e.target.value })) })
+          ),
+          h("div", null,
+            h("div", { className: "label" }, "Hex Class"),
+            h("input", { style: { width: "100%" }, value: form.hex_class, onChange: e => setForm(f => ({ ...f, hex_class: e.target.value })) })
+          ),
+          h("div", null,
+            h("div", { className: "label" }, "Fam (" + api.activeSem.name + ")"),
             h("select", { style: { width: "100%" }, value: form.fam_id, onChange: e => setForm(f => ({ ...f, fam_id: e.target.value })) },
               h("option", { value: "" }, "Unassigned"),
               api.activeFams.map(f => h("option", { key: f.id, value: f.id }, f.name))
@@ -1175,16 +1403,58 @@ function ProfilePage(api) {
           )
         ) : h(React.Fragment, null,
           h("div", { className: "profile-name" }, m.name),
-          h("div", { className: "tag-row" }, h("span", { className: "tag" }, m.hex_class || "No Hex"), m.is_driver && h("span", { className: "tag" }, "Driver"), ms?.is_fam_head && h("span", { className: "tag" }, "Fam Head")),
+          h("div", { className: "tag-row" },
+            h("span", { className: "tag" }, m.hex_class || "No Hex"),
+            m.is_driver && h("span", { className: "tag" }, "Driver"),
+            ms?.is_fam_head && h("span", { className: "tag" }, "Fam Head")
+          ),
           h("div", { className: "profile-stat-grid" },
             h("div", { className: "profile-stat" }, h("div", { className: "label" }, "Current Semester Points"), h("div", { className: "profile-value" }, api.memberPoints(m.id) + " pts")),
             h("div", { className: "profile-stat" }, h("div", { className: "label" }, "Lifetime Points"), h("div", { className: "profile-value" }, api.lifetimePoints(m.id) + " pts")),
-            h("div", { className: "profile-stat" }, h("div", { className: "label" }, "Fam (" + api.activeSem.name + ")"), h("div", { className: "profile-value" }, api.getFam(ms?.fam_id)?.name || "Unassigned"))
+            h("div", { className: "profile-stat" }, h("div", { className: "label" }, "Fam (" + api.activeSem.name + ")"), h("div", { className: "profile-value" }, api.getFam(ms?.fam_id)?.name || "Unassigned")),
+            h("div", { className: "profile-stat" },
+              h("div", { className: "label" }, "Bigs"),
+              h("div", { className: "profile-value" }, bigs.length ? bigs.map(x => x.name).join(", ") : "None")
+            ),
+            h("div", { className: "profile-stat" },
+              h("div", { className: "label" }, "Littles"),
+              h("div", { className: "profile-value" }, littles.length ? littles.map(x => x.name).join(", ") : "None")
+            )
           ),
           h("button", { className: "btn btn-dark", style: { marginTop: 16, width: "100%" }, onClick: startEdit }, "Edit Profile")
         )
       ),
+
       h("div", { className: "grid" },
+        h("div", { className: "card" },
+          h("div", { className: "card-title" }, "Big / Little Relationships"),
+          h("p", { className: "helper" }, "Use this to keep bigs and littles visible while organizing fams. Adding one side automatically creates the opposite side."),
+          h("div", { className: "controls" },
+            h("select", { value: relType, onChange: e => setRelType(e.target.value) },
+              h("option", { value: "big" }, "Big"),
+              h("option", { value: "little" }, "Little")
+            ),
+            h("select", { value: relMemberId, onChange: e => setRelMemberId(e.target.value) },
+              h("option", { value: "" }, "Member"),
+              relationshipOptions.map(x => h("option", { key: x.id, value: x.id }, x.name))
+            ),
+            h("button", { className: "btn btn-dark", onClick: addRelationship }, "Add")
+          ),
+
+          relationships.length === 0 ? h("div", { className: "empty" }, "No big/little relationships yet.") :
+            h("table", { className: "table" },
+              h("thead", null, h("tr", null, h("th", null, "Relationship"), h("th", null, "Member"), h("th", null, ""))),
+              h("tbody", null, relationships.map(r => {
+                const related = api.data.members.find(x => x.id === r.related_member_id);
+                return h("tr", { key: r.id || r.member_id + r.related_member_id + r.relationship_type },
+                  h("td", null, r.relationship_type === "big" ? "Big" : "Little"),
+                  h("td", null, related?.name || "Deleted"),
+                  h("td", null, h("button", { className: "btn btn-sm btn-danger", onClick: () => removeRelationship(r.related_member_id) }, "Remove"))
+                );
+              }))
+            )
+        ),
+
         h("div", { className: "card" },
           h("div", { className: "card-title" }, "Semester History"),
           h("table", { className: "table" },
@@ -1196,6 +1466,7 @@ function ProfilePage(api) {
             }))
           )
         ),
+
         h("div", { className: "card" },
           h("div", { className: "card-title" }, "Point Log"),
           history.length === 0 ? h("div", { className: "empty" }, "No points logged yet.") : h(ActivityTable, { api, rows: history })
@@ -1233,23 +1504,8 @@ async function approveSubmission(api, submission) {
     const task = api.data.tasks.find(t => t.id === item.final_task_id);
     if (!task) continue;
 
-    const counts = api.data.point_submission_item_fam_counts
-      .filter(c => c.item_id === item.id && Number(c.member_count) > 0);
-
-    const rows = counts.map(c => ({
-      submission_item_id: item.id,
-      fam_id: c.fam_id,
-      task_id: item.final_task_id,
-      member_count: Number(c.member_count),
-      points_per_member: Number(task.points),
-      total_points: Number(c.member_count) * Number(task.points),
-      semester_id: submission.semester_id
-    }));
-
-    if (rows.length) {
-      const { error } = await db.from("fam_point_logs").insert(rows);
-      if (error) return api.showFlash(error.message, "error");
-    }
+    const rawMemberRows = (api.data.point_submission_item_members || [])
+      .filter(row => row.item_id === item.id);
 
     const alreadyLoggedMembers = new Set(
       (api.data.completions || [])
@@ -1259,8 +1515,7 @@ async function approveSubmission(api, submission) {
 
     const todayStr = new Date().toISOString().slice(0, 10);
 
-    const memberRows = (api.data.point_submission_item_members || [])
-      .filter(row => row.item_id === item.id)
+    const memberRows = rawMemberRows
       .filter(row => !alreadyLoggedMembers.has(row.member_id + "|" + item.final_task_id + "|" + todayStr))
       .map(row => ({
         member_id: row.member_id,
@@ -1269,9 +1524,31 @@ async function approveSubmission(api, submission) {
         date: todayStr
       }));
 
+    // If members are attached, the points belong to those people. The fam total
+    // will update through current member assignments, so we do not also add
+    // direct fam logs and double-count them.
     if (memberRows.length) {
       const { error } = await db.from("completions").insert(memberRows);
       if (error) return api.showFlash(error.message, "error");
+    } else {
+      // If no members are attached, this is treated as a direct fam award.
+      const counts = api.data.point_submission_item_fam_counts
+        .filter(c => c.item_id === item.id && Number(c.member_count) > 0);
+
+      const rows = counts.map(c => ({
+        submission_item_id: item.id,
+        fam_id: c.fam_id,
+        task_id: item.final_task_id,
+        member_count: Number(c.member_count),
+        points_per_member: Number(task.points),
+        total_points: Number(c.member_count) * Number(task.points),
+        semester_id: submission.semester_id
+      }));
+
+      if (rows.length) {
+        const { error } = await db.from("fam_point_logs").insert(rows);
+        if (error) return api.showFlash(error.message, "error");
+      }
     }
   }
 
@@ -1375,6 +1652,46 @@ function PendingLogsPage(api) {
   );
 }
 
+
+async function toggleSubmissionMember(api, itemId, memberId, checked) {
+  if (USE_SUPABASE) {
+    if (checked) {
+      const exists = (api.data.point_submission_item_members || [])
+        .find(row => row.item_id === itemId && row.member_id === memberId);
+
+      if (!exists) {
+        const { error } = await db
+          .from("point_submission_item_members")
+          .insert({ item_id: itemId, member_id: memberId });
+
+        if (error) return api.showFlash(error.message, "error");
+      }
+    } else {
+      const { error } = await db
+        .from("point_submission_item_members")
+        .delete()
+        .eq("item_id", itemId)
+        .eq("member_id", memberId);
+
+      if (error) return api.showFlash(error.message, "error");
+    }
+
+    await api.loadAll();
+  } else {
+    await api.mutateLocal(d => {
+      const rows = d.point_submission_item_members || [];
+      return {
+        ...d,
+        point_submission_item_members: checked
+          ? rows.find(r => r.item_id === itemId && r.member_id === memberId)
+            ? rows
+            : [...rows, { id: uid("psim"), item_id: itemId, member_id: memberId }]
+          : rows.filter(r => !(r.item_id === itemId && r.member_id === memberId))
+      };
+    });
+  }
+}
+
 function PendingItemEditor({ api, item }) {
   const counts = api.activeFams.map(fam => {
     const existing = api.data.point_submission_item_fam_counts
@@ -1382,6 +1699,12 @@ function PendingItemEditor({ api, item }) {
 
     return { fam, existing };
   });
+
+  const selectedMemberIds = new Set(
+    (api.data.point_submission_item_members || [])
+      .filter(row => row.item_id === item.id)
+      .map(row => row.member_id)
+  );
 
   return h("div", { className: "card", style: { marginTop: 12, background: "#fbfbfa" } },
     h("div", { className: "card-title" }, "Activity Item"),
@@ -1398,27 +1721,54 @@ function PendingItemEditor({ api, item }) {
       )
     ),
 
-    h("div", { className: "grid" },
-      counts.map(({ fam, existing }) =>
-        h("div", { key: fam.id, className: "task-row", style: { borderRadius: 14 } },
-          h("span", null, fam.name),
-          existing
-            ? h("input", {
-                type: "number",
-                min: 0,
-                value: existing.member_count,
-                style: { width: 80 },
-                onChange: e => updateFamCount(api, existing, e.target.value)
-              })
-            : h("button", {
-                className: "btn btn-sm",
-                onClick: () => createMissingCount(api, item.id, fam.id)
-              }, "Add")
+    h("div", { className: "card", style: { marginTop: 12 } },
+      h("div", { className: "card-title" }, "Members Who Earned Points"),
+      h("p", { className: "helper" }, "Check the individual people who should receive points. They can be unassigned and still earn points."),
+      h("div", { className: "bulk-grid" },
+        api.data.members.map(member => {
+          const ms = api.getMemberSem(member.id);
+          const fam = api.getFam(ms?.fam_id);
+          const checked = selectedMemberIds.has(member.id);
+
+          return h("label", { key: member.id, className: "select-member" },
+            h("input", {
+              type: "checkbox",
+              checked,
+              onChange: e => toggleSubmissionMember(api, item.id, member.id, e.target.checked)
+            }),
+            h("span", null, member.name),
+            h("span", { className: "muted" }, fam?.name || "Unassigned")
+          );
+        })
+      )
+    ),
+
+    h("div", { className: "card", style: { marginTop: 12 } },
+      h("div", { className: "card-title" }, "Direct Fam Award Fallback"),
+      h("p", { className: "helper" }, "Only use this when no individual members should receive points. If members are checked above, approval uses member points and skips these counts to avoid double-counting."),
+      h("div", { className: "grid" },
+        counts.map(({ fam, existing }) =>
+          h("div", { key: fam.id, className: "task-row", style: { borderRadius: 14 } },
+            h("span", null, fam.name),
+            existing
+              ? h("input", {
+                  type: "number",
+                  min: 0,
+                  value: existing.member_count,
+                  style: { width: 80 },
+                  onChange: e => updateFamCount(api, existing, e.target.value)
+                })
+              : h("button", {
+                  className: "btn btn-sm",
+                  onClick: () => createMissingCount(api, item.id, fam.id)
+                }, "Add")
+          )
         )
       )
     )
   );
 }
+
 function SettingsPage(api) {
   const [newSem, setNewSem] = useState("");
   const [newFamNames, setNewFamNames] = useState({});
@@ -1619,6 +1969,34 @@ function SettingsPage(api) {
     api.showFlash("Fam points reset");
   }
 
+  async function makeSemesterActive(id) {
+    if (USE_SUPABASE) {
+      const { error: clearError } = await db
+        .from("semesters")
+        .update({ is_active: false })
+        .neq("id", id);
+
+      if (clearError) return api.showFlash(clearError.message, "error");
+
+      const { error: activeError } = await db
+        .from("semesters")
+        .update({ is_active: true })
+        .eq("id", id);
+
+      if (activeError) return api.showFlash(activeError.message, "error");
+
+      await api.loadAll();
+    } else {
+      await api.mutateLocal(d => ({
+        ...d,
+        semesters: d.semesters.map(s => ({ ...s, is_active: s.id === id }))
+      }));
+    }
+
+    api.setActiveSemId(id);
+    api.showFlash("Active semester updated");
+  }
+
   async function createSemester() {
     if (!safeName(newSem)) return api.showFlash("Semester name required", "error");
 
@@ -1710,12 +2088,14 @@ function SettingsPage(api) {
 
       await db.from("fam_point_logs").delete().eq("semester_id", id);
       await db.from("completions").delete().eq("semester_id", id);
+      await db.from("member_relationships").delete().eq("semester_id", id);
       await db.from("member_semesters").update({ fam_id: null, is_fam_head: false }).eq("semester_id", id);
     } else {
       await api.mutateLocal(d => ({
         ...d,
         completions: d.completions.filter(c => c.semester_id !== id),
         fam_point_logs: (d.fam_point_logs || []).filter(log => log.semester_id !== id),
+        member_relationships: (d.member_relationships || []).filter(r => r.semester_id !== id),
         point_submissions: (d.point_submissions || []).filter(s => s.semester_id !== id),
         point_submission_items: (d.point_submission_items || []).filter(item => !itemsForSemester.includes(item.id)),
         point_submission_item_fam_counts: (d.point_submission_item_fam_counts || []).filter(c => !itemsForSemester.includes(c.item_id)),
@@ -1774,6 +2154,7 @@ function SettingsPage(api) {
 
       await db.from("fam_point_logs").delete().eq("semester_id", id);
       await db.from("completions").delete().eq("semester_id", id);
+      await db.from("member_relationships").delete().eq("semester_id", id);
       await db.from("member_semesters").delete().eq("semester_id", id);
       await db.from("fams").delete().eq("semester_id", id);
       await db.from("semesters").delete().eq("id", id);
@@ -1787,6 +2168,7 @@ function SettingsPage(api) {
         member_semesters: d.member_semesters.filter(ms => ms.semester_id !== id),
         completions: d.completions.filter(c => c.semester_id !== id),
         fam_point_logs: (d.fam_point_logs || []).filter(log => log.semester_id !== id),
+        member_relationships: (d.member_relationships || []).filter(r => r.semester_id !== id),
         point_submissions: (d.point_submissions || []).filter(s => s.semester_id !== id),
         point_submission_items: (d.point_submission_items || []).filter(item => !itemsForSemester.includes(item.id)),
         point_submission_item_fam_counts: (d.point_submission_item_fam_counts || []).filter(c => !itemsForSemester.includes(c.item_id)),
@@ -1910,7 +2292,8 @@ function SettingsPage(api) {
         h("div", { key: s.id, className: "semester-row" },
           h("span", null, s.name),
           h("div", { className: "row-actions" },
-            h("button", { className: "btn btn-sm", onClick: () => api.setActiveSemId(s.id) }, s.id === api.activeSemId ? "Active" : "Switch"),
+            h("button", { className: "btn btn-sm", onClick: () => api.setActiveSemId(s.id) }, s.id === api.activeSemId ? "Viewing" : "View"),
+            h("button", { className: "btn btn-sm btn-dark", onClick: () => makeSemesterActive(s.id) }, s.is_active ? "Bot Active" : "Make Active"),
             h("button", { className: "btn btn-sm", onClick: () => resetSemester(s.id) }, "Reset"),
             h("button", { className: "btn btn-sm btn-danger", onClick: () => deleteSemester(s.id) }, "Delete")
           )
