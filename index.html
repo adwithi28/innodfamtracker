@@ -4,7 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Innovative Design at USC Tracker</title>
-
+  
+  <link rel="icon" type="image/png" href="./favicon.png">
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Fragment+Mono:ital@0;1&family=Victor+Mono:ital,wght@0,100..700;1,100..700&display=swap" rel="stylesheet" />
@@ -689,7 +690,7 @@ function App() {
 
   return h("main", { className: "page" },
     h("header", { className: "topbar" },
-      h("h1", { className: "app-title" }, "Innovative Design at USC"),
+      h("h1", { className: "app-title" }, "INNODATUSC Fam Tracker"),
       h("nav", { className: "nav" },
         TABS.map(([key, label]) => h("button", {
           key, className: "nav-btn" + (!profileId && tab === key ? " active" : ""),
