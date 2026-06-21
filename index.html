@@ -785,7 +785,7 @@ function MembersPage(api) {
 
   const [name, setName] = useState("");
   const [hex, setHex] = useState("");
-  const [famId, setFamId] = useState(api.activeFams[0]?.id || "");
+  const [famId, setFamId] = useState("");
   const [isDriver, setIsDriver] = useState(false);
   const [isFamHead, setIsFamHead] = useState(false);
 
@@ -797,7 +797,8 @@ function MembersPage(api) {
     const ms = api.getMemberSem(m.id);
     const q = search.trim().toLowerCase();
     if (q && !(m.name || "").toLowerCase().includes(q) && !(m.hex_class || "").toLowerCase().includes(q)) return false;
-    if (famFilter !== "all" && ms?.fam_id !== famFilter) return false;
+    if (famFilter === "unassigned" && ms?.fam_id) return false;
+    if (famFilter !== "all" && famFilter !== "unassigned" && ms?.fam_id !== famFilter) return false;
     if (hexFilter !== "all" && m.hex_class !== hexFilter) return false;
     if (driverFilter === "drivers" && !m.is_driver) return false;
     if (driverFilter === "nondrivers" && m.is_driver) return false;
@@ -806,7 +807,7 @@ function MembersPage(api) {
     return true;
   }).sort((a,b) => {
     if (sort === "name") return a.name.localeCompare(b.name);
-    if (sort === "fam") return (api.getFam(api.getMemberSem(a.id)?.fam_id)?.name || "").localeCompare(api.getFam(api.getMemberSem(b.id)?.fam_id)?.name || "");
+    if (sort === "fam") return (api.getFam(api.getMemberSem(a.id)?.fam_id)?.name || "Unassigned").localeCompare(api.getFam(api.getMemberSem(b.id)?.fam_id)?.name || "Unassigned");
     return api.memberPoints(b.id) - api.memberPoints(a.id);
   });
 
@@ -893,7 +894,7 @@ function MembersPage(api) {
     h("div", { className: "section-head" }, h("h2", { className: "section-title" }, "Members")),
     h("div", { className: "members-controls" },
       h("select", { className: "filter-sort", value: sort, onChange: e => setSort(e.target.value) }, h("option", { value: "points" }, "Sort By"), h("option", { value: "points" }, "Points"), h("option", { value: "name" }, "Name"), h("option", { value: "fam" }, "Fam")),
-      h("select", { value: famFilter, onChange: e => setFamFilter(e.target.value) }, h("option", { value: "all" }, "Fam"), api.activeFams.map(f => h("option", { key: f.id, value: f.id }, f.name))),
+      h("select", { value: famFilter, onChange: e => setFamFilter(e.target.value) }, h("option", { value: "all" }, "Fam"), h("option", { value: "unassigned" }, "Unassigned"), api.activeFams.map(f => h("option", { key: f.id, value: f.id }, f.name))),
       h("select", { value: hexFilter, onChange: e => setHexFilter(e.target.value) }, h("option", { value: "all" }, "Hex Class"), hexClasses.map(x => h("option", { key: x, value: x }, x))),
       h("select", { value: driverFilter, onChange: e => setDriverFilter(e.target.value) }, h("option", { value: "all" }, "Driver"), h("option", { value: "drivers" }, "Drivers"), h("option", { value: "nondrivers" }, "Non Drivers")),
       h("input", { className: "search", value: search, onChange: e => setSearch(e.target.value), placeholder: "Search" }),
@@ -902,7 +903,7 @@ function MembersPage(api) {
       h("div", { className: "quick-add" },
         h("input", { className: "compact", value: name, onChange: e => setName(e.target.value), placeholder: "Full Name" }),
         h("input", { className: "tiny", value: hex, onChange: e => setHex(e.target.value), placeholder: "Hex Class" }),
-        h("select", { className: "tiny", value: famId, onChange: e => setFamId(e.target.value) }, h("option", { value: "" }, "Fam"), api.activeFams.map(f => h("option", { key: f.id, value: f.id }, f.name))),
+        h("select", { className: "tiny", value: famId, onChange: e => setFamId(e.target.value) }, h("option", { value: "" }, "Unassigned"), api.activeFams.map(f => h("option", { key: f.id, value: f.id }, f.name))),
         h("div", { className: "check-stack" },
           h("label", { className: "check-wrap" }, h("input", { type: "checkbox", checked: isFamHead, onChange: e => setIsFamHead(e.target.checked) }), "Fam Head"),
           h("label", { className: "check-wrap" }, h("input", { type: "checkbox", checked: isDriver, onChange: e => setIsDriver(e.target.checked) }), "Driver")
