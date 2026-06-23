@@ -551,8 +551,34 @@ function App() {
 
   useEffect(() => { loadAll(); }, []);
 
-  async function loadAll() {
-    setLoading(true);
+  useEffect(() => {
+    if (!USE_SUPABASE) return;
+
+    let refreshTimer = null;
+    const refresh = () => {
+      clearTimeout(refreshTimer);
+      refreshTimer = setTimeout(() => loadAll({ silent: true }), 250);
+    };
+
+    const channel = db
+      .channel("tracker-live-updates")
+      .on("postgres_changes", { event: "*", schema: "public", table: "point_submissions" }, refresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "point_submission_items" }, refresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "point_submission_item_members" }, refresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "point_submission_item_fam_counts" }, refresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "completions" }, refresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "fam_point_logs" }, refresh)
+      .subscribe();
+
+    return () => {
+      clearTimeout(refreshTimer);
+      db.removeChannel(channel);
+    };
+  }, []);
+
+  async function loadAll(options = {}) {
+    const silent = !!options.silent;
+    if (!silent) setLoading(true);
     try {
       if (USE_SUPABASE) {
         const [
@@ -633,7 +659,7 @@ function App() {
       setData(local);
       setActiveSemId((local.semesters.find(s => s.is_active) || local.semesters[0]).id);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }
 
@@ -957,7 +983,9 @@ function TasksPage(api) {
   const [editPoints, setEditPoints] = useState("");
 
   async function addTask() {
-    if (!safeName(name) || !Number(points)) return api.showFlash("Enter task name and point value", "error");
+    if (!safeName(name) || points === "" || Number.isNaN(Number(points))) {
+      return api.showFlash("Enter task name and point value", "error");
+    }
     if (USE_SUPABASE) {
       const { error } = await db.from("tasks").insert({ name: safeName(name), points: Number(points) });
       if (error) return api.showFlash(error.message, "error");
@@ -969,7 +997,9 @@ function TasksPage(api) {
   }
 
   async function saveTask(id) {
-    if (!safeName(editName) || !Number(editPoints)) return api.showFlash("Enter task name and point value", "error");
+    if (!safeName(editName) || editPoints === "" || Number.isNaN(Number(editPoints))) {
+      return api.showFlash("Enter task name and point value", "error");
+    }
     if (USE_SUPABASE) {
       const { error } = await db.from("tasks").update({ name: safeName(editName), points: Number(editPoints) }).eq("id", id);
       if (error) return api.showFlash(error.message, "error");
@@ -997,7 +1027,7 @@ function TasksPage(api) {
     h("div", { className: "quick-add", style: { justifyContent: "flex-start", marginBottom: 20 } },
       h("span", { className: "card-title", style: { margin: 0, whiteSpace: "nowrap" } }, "Add Task"),
       h("input", { className: "compact", value: name, onChange: e => setName(e.target.value), placeholder: "Task Name" }),
-      h("input", { className: "tiny", type: "number", min: 1, value: points, onChange: e => setPoints(e.target.value), placeholder: "Point Value" }),
+      h("input", { className: "tiny", type: "number", value: points, onChange: e => setPoints(e.target.value), placeholder: "+/- Points" }),
       h("button", { className: "btn btn-dark", onClick: addTask }, "Add")
     ),
     h("div", { className: "task-list" },
@@ -1005,7 +1035,7 @@ function TasksPage(api) {
       api.data.tasks.map(t => h("div", { key: t.id, className: "task-row" },
         editId === t.id ? h("div", { className: "task-main", style: { flex: 1 } },
           h("input", { value: editName, onChange: e => setEditName(e.target.value) }),
-          h("input", { type: "number", min: 1, value: editPoints, onChange: e => setEditPoints(e.target.value) })
+          h("input", { type: "number", value: editPoints, onChange: e => setEditPoints(e.target.value) })
         ) : h("div", { className: "task-main" }, h("span", { className: "task-name" }, t.name), h("span", { className: "muted" }, t.points + " Points")),
         h("div", { className: "row-actions" },
           editId === t.id ? h("button", { className: "btn btn-sm", onClick: () => saveTask(t.id) }, "Save") : h("button", { className: "btn btn-sm", onClick: () => { setEditId(t.id); setEditName(t.name); setEditPoints(String(t.points)); } }, "Edit"),
@@ -1374,6 +1404,91 @@ function ProfilePage(api) {
     api.showFlash("Relationship removed");
   }
 
+  async function subtractMemberPoints() {
+    const amount = Number(prompt("How many points should be subtracted from this member?"));
+
+    if (!amount || amount <= 0) {
+      return api.showFlash("Enter a positive number to subtract", "error");
+    }
+
+    const taskName = "Point Adjustment -" + amount;
+    let adjustmentTask = api.data.tasks.find(t => t.name === taskName && Number(t.points) === -amount);
+
+    if (USE_SUPABASE) {
+      if (!adjustmentTask) {
+        const { data: newTask, error: taskErr } = await db
+          .from("tasks")
+          .insert({ name: taskName, points: -amount })
+          .select()
+          .single();
+
+        if (taskErr) return api.showFlash(taskErr.message, "error");
+        adjustmentTask = newTask;
+      }
+
+      const { error } = await db.from("completions").insert({
+        member_id: m.id,
+        task_id: adjustmentTask.id,
+        semester_id: api.activeSemId,
+        date: today()
+      });
+
+      if (error) return api.showFlash(error.message, "error");
+
+      await api.loadAll();
+    } else {
+      await api.mutateLocal(d => {
+        const localTask = adjustmentTask || { id: uid("task"), name: taskName, points: -amount };
+
+        return {
+          ...d,
+          tasks: adjustmentTask ? d.tasks : [...d.tasks, localTask],
+          completions: [
+            ...d.completions,
+            {
+              id: uid("comp"),
+              member_id: m.id,
+              task_id: localTask.id,
+              semester_id: api.activeSemId,
+              date: today()
+            }
+          ]
+        };
+      });
+    }
+
+    api.showFlash("Member points subtracted");
+  }
+
+  async function resetMemberSemesterPoints() {
+    const confirmText = prompt(`Type RESET ${m.name} to clear this member's points for ${api.activeSem.name}.`);
+
+    if (confirmText !== `RESET ${m.name}`) {
+      return api.showFlash("Reset cancelled", "error");
+    }
+
+    if (USE_SUPABASE) {
+      const { error } = await db
+        .from("completions")
+        .delete()
+        .eq("member_id", m.id)
+        .eq("semester_id", api.activeSemId);
+
+      if (error) return api.showFlash(error.message, "error");
+
+      await api.loadAll();
+    } else {
+      await api.mutateLocal(d => ({
+        ...d,
+        completions: d.completions.filter(c =>
+          !(c.member_id === m.id && c.semester_id === api.activeSemId)
+        )
+      }));
+    }
+
+    api.showFlash("Member semester points reset");
+  }
+
   return h("section", null,
     h("button", { className: "btn", style: { marginBottom: 18 }, onClick: () => api.setProfileId(null) }, "← Back"),
 
@@ -1423,7 +1538,9 @@ function ProfilePage(api) {
               h("div", { className: "profile-value" }, littles.length ? littles.map(x => x.name).join(", ") : "None")
             )
           ),
-          h("button", { className: "btn btn-dark", style: { marginTop: 16, width: "100%" }, onClick: startEdit }, "Edit Profile")
+          h("button", { className: "btn btn-dark", style: { marginTop: 16, width: "100%" }, onClick: startEdit }, "Edit Profile"),
+          h("button", { className: "btn", style: { marginTop: 8, width: "100%" }, onClick: subtractMemberPoints }, "Subtract Points"),
+          h("button", { className: "btn btn-danger", style: { marginTop: 8, width: "100%" }, onClick: resetMemberSemesterPoints }, "Reset Semester Points")
         )
       ),
 
