@@ -10,7 +10,7 @@
 ![Figma](https://img.shields.io/badge/-Figma-F24E1E?style=flat-square&logo=figma&logoColor=white)
 ![Git](https://img.shields.io/badge/-Git-F05032?style=flat-square&logo=git&logoColor=white)
 
-A Fam points tracking platform for Innovative Design at USC that centralizes member participation data and automates point assignments through an AI-powered Slack agent. View at https://adwithi28.github.io/innodfamtracker/
+A Fam points tracking platform for Innovative Design at USC that centralizes member participation data and automates point assignments through an AI-powered Slack agent. View at [innod](https://innodfams.vercel.app/)
 
 ## Overview
 
