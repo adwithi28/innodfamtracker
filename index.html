@@ -117,10 +117,18 @@
     .organizer-person { display: flex; gap: 6px; align-items: center; padding: 7px 8px; border: 1px solid var(--soft-line); border-radius: 8px; background: #faf9f8; cursor: grab; user-select: none; min-height: 34px; font-size: 11px; }
     .organizer-person:active { cursor: grabbing; }
     .organizer-person.dragging { opacity: 0.45; }
-    .organizer-person.little { margin-left: 8px; }
-    .organizer-person button { border: 0; background: transparent; text-align: left; cursor: pointer; font: inherit; color: inherit; padding: 0; flex: 1; }
+    .organizer-person.fam-head { background: #fff6dc; border-color: #e2c77d; }
+    .organizer-person button { border: 0; background: transparent; text-align: left; cursor: pointer; font: inherit; color: inherit; padding: 0; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .organizer-drag-handle { color: var(--muted); font-size: 12px; letter-spacing: -3px; padding-right: 4px; }
+    .organizer-role-icons { display: flex; align-items: center; flex-wrap: wrap; gap: 2px; flex: 0 0 auto; max-width: 90px; }
+    .organizer-role-icon { font-size: 12px; line-height: 1; }
     .organizer-empty { color: var(--muted); font-size: 11px; padding: 12px 4px; }
+    .role-fieldset { border: 1px solid var(--soft-line); border-radius: 12px; padding: 10px; min-width: 0; }
+    .role-fieldset legend { font-family: "Victor Mono", monospace; font-size: 11px; text-transform: uppercase; padding: 0 5px; }
+    .role-choice-grid { display: flex; flex-wrap: wrap; gap: 7px; }
+    .role-choice { display: flex; align-items: center; gap: 5px; border: 1px solid var(--soft-line); border-radius: 999px; padding: 5px 8px; font-size: 10px; cursor: pointer; white-space: nowrap; }
+    .role-choice:has(input:checked) { background: #fff6dc; border-color: #e2c77d; }
+    .role-choice input { width: 14px; height: 14px; min-height: auto; padding: 0; accent-color: var(--dark); }
     @media (max-width: 550px) {
       .organizer-board { grid-template-columns: 1fr; }
       .organizer-toolbar input { width: 100%; }
@@ -495,6 +503,28 @@ const COLOR_PALETTE = [
   { key: "orange", bg: "#FFEAD6", bar: "#D98F4E" },
   { key: "pink",   bg: "#FFE6F2", bar: "#D97BA8" }
 ];
+const AFFILIATION_OPTIONS = {
+  divisions: [
+    { value: "design", label: "Design", icon: "🎨" },
+    { value: "uiux", label: "UI/UX", icon: "🧩" },
+    { value: "media", label: "Media", icon: "📷" }
+  ],
+  committees: [
+    { value: "community", label: "Community", icon: "🤝" },
+    { value: "marketing", label: "Marketing", icon: "📣" },
+    { value: "externals", label: "Externals", icon: "🌐" }
+  ],
+  positions: [
+    { value: "eboard", label: "E-board", icon: "👑" }
+  ]
+};
+function selectedAffiliations(ms, category) {
+  return Array.isArray(ms?.[category]) ? ms[category] : [];
+}
+function affiliationOptions(ms) {
+  return Object.entries(AFFILIATION_OPTIONS).flatMap(([category, options]) =>
+    options.filter(option => selectedAffiliations(ms, category).includes(option.value)));
+}
 function colorFor(idx) { return COLOR_PALETTE[idx % COLOR_PALETTE.length]; }
 function famMeta(colorKey) { return COLOR_PALETTE.find(c => c.key === colorKey) || COLOR_PALETTE[0]; }
 
@@ -546,6 +576,40 @@ function relatedGroup(data, semesterId, memberId) {
     });
   }
   return [...seen].filter(id => members.has(id));
+}
+
+// Order a connected group from big to little, preserving every generation.
+function relationshipLayout(data, semesterId, ids) {
+  const allowed = new Set(ids);
+  const names = new Map(data.members.map(m => [m.id, m.name]));
+  const children = new Map(ids.map(id => [id, new Set()]));
+  const incoming = new Set();
+  (data.member_relationships || []).filter(r =>
+    !r.semester_id || r.semester_id === semesterId).forEach(r => {
+    const big = r.relationship_type === "little" ? r.member_id :
+      r.relationship_type === "big" ? r.related_member_id : null;
+    const little = r.relationship_type === "little" ? r.related_member_id :
+      r.relationship_type === "big" ? r.member_id : null;
+    if (allowed.has(big) && allowed.has(little) && big !== little) {
+      children.get(big).add(little);
+      incoming.add(little);
+    }
+  });
+  const byName = (a, b) => (names.get(a) || "").localeCompare(names.get(b) || "");
+  const roots = ids.filter(id => !incoming.has(id)).sort(byName);
+  const orderedIds = [];
+  const depthById = {};
+  const visited = new Set();
+  function walk(id, depth) {
+    if (visited.has(id)) return;
+    visited.add(id);
+    orderedIds.push(id);
+    depthById[id] = depth;
+    [...(children.get(id) || [])].sort(byName).forEach(child => walk(child, depth + 1));
+  }
+  roots.forEach(id => walk(id, 0));
+  ids.filter(id => !visited.has(id)).sort(byName).forEach(id => walk(id, 0));
+  return { orderedIds, depthById };
 }
 
 function loadLocal() {
@@ -863,16 +927,10 @@ function FamOrganizer(api) {
     if (visited.has(person.id)) return result;
     const ids = relatedGroup(api.data, api.activeSemId, person.id);
     ids.forEach(id => visited.add(id));
-    const littleIds = new Set((api.data.member_relationships || [])
-      .filter(r => (!r.semester_id || r.semester_id === api.activeSemId) &&
-        r.relationship_type === "little" && ids.includes(r.member_id))
-      .map(r => r.related_member_id));
-    const members = ids.map(id => api.data.members.find(m => m.id === id))
-      .filter(Boolean).sort((a, b) =>
-        Number(littleIds.has(a.id)) - Number(littleIds.has(b.id)) ||
-        a.name.localeCompare(b.name));
+    const layout = relationshipLayout(api.data, api.activeSemId, ids);
+    const members = layout.orderedIds.map(id => api.data.members.find(m => m.id === id)).filter(Boolean);
     const famIds = [...new Set(members.map(m => api.getMemberSem(m.id)?.fam_id || ""))];
-    result.push({ members, littleIds, famId: famIds.length === 1 ? famIds[0] : "", mixed: famIds.length > 1 });
+    result.push({ members, depthById: layout.depthById, famId: famIds.length === 1 ? famIds[0] : "", mixed: famIds.length > 1 });
     return result;
   }, []);
   const groupRows = famId => groups.filter(g => g.mixed ? famId === "" : g.famId === famId);
@@ -940,20 +998,31 @@ function FamOrganizer(api) {
       shownRows.length ? shownRows.map(g => h("div", { key: g.members[0].id, className: "organizer-group" + (g.members.length > 1 ? " linked" : "") },
         g.mixed && h("div", { className: "organizer-empty" }, "Linked people need one fam"),
         h("div", { className: "organizer-tiles" },
-          g.members.map(m => h("div", {
+          g.members.map(m => {
+            const memberSem = api.getMemberSem(m.id);
+            const depth = g.depthById[m.id] || 0;
+            return h("div", {
             key: m.id,
-            className: "organizer-person" + (g.littleIds.has(m.id) ? " little" : "") +
+            className: "organizer-person" + (memberSem?.is_fam_head ? " fam-head" : "") +
               (draggingIds.includes(m.id) ? " dragging" : ""),
+            style: { marginLeft: Math.min(depth, 8) * 10 + "px" },
             draggable: true,
             title: "Drag to move " + (g.members.length > 1 ? "all linked members" : m.name),
             onDragStart: e => startDrag(e, g, m.id),
             onDragEnd: finishDrag
           },
-            h("span", { className: "organizer-drag-handle", "aria-hidden": true }, g.littleIds.has(m.id) ? "↳" : "⋮⋮"),
+            h("span", { className: "organizer-drag-handle", "aria-hidden": true }, depth ? "↳" : "⋮⋮"),
             h("button", { onClick: () => api.setProfileId(m.id) }, m.name),
-            api.getMemberSem(m.id)?.is_fam_head && h("span", { title: "Fam head" }, "★"),
+            memberSem?.is_fam_head && h("span", { title: "Fam head" }, "★"),
+            affiliationOptions(memberSem).length > 0 && h("span", { className: "organizer-role-icons" },
+              affiliationOptions(memberSem).map(option => h("span", {
+                key: option.value, className: "organizer-role-icon", title: option.label,
+                role: "img", "aria-label": option.label
+              }, option.icon))
+            ),
             m.is_driver && h("span", { title: "Driver" }, "🚘")
-          ))
+          );
+          })
         )
       )) : h("div", { className: "organizer-empty" }, query ? "No matching people" : "Drop people here")
       )
@@ -1457,6 +1526,23 @@ function ActivityTable({ api, rows }) {
 //  Shows one member’s permanent info, semester history,
 //  lifetime points, and full point log.
 // ============================================================
+function AffiliationChoices({ category, selected, onToggle }) {
+  const labels = { divisions: "Divisions", committees: "Committees", positions: "Positions" };
+  return h("fieldset", { className: "role-fieldset" },
+    h("legend", null, labels[category]),
+    h("div", { className: "role-choice-grid" },
+      AFFILIATION_OPTIONS[category].map(option => h("label", { key: option.value, className: "role-choice" },
+        h("input", {
+          type: "checkbox", checked: selected.includes(option.value),
+          onChange: e => onToggle(category, option.value, e.target.checked)
+        }),
+        h("span", { "aria-hidden": true }, option.icon),
+        option.label
+      ))
+    )
+  );
+}
+
 function ProfilePage(api) {
   const m = api.member;
   if (!m) return h("div", { className: "empty" }, "Member not found.");
@@ -1490,7 +1576,10 @@ function ProfilePage(api) {
       hex_class: m.hex_class || "",
       is_driver: !!m.is_driver,
       fam_id: ms?.fam_id || "",
-      is_fam_head: !!ms?.is_fam_head
+      is_fam_head: !!ms?.is_fam_head,
+      divisions: [...selectedAffiliations(ms, "divisions")],
+      committees: [...selectedAffiliations(ms, "committees")],
+      positions: [...selectedAffiliations(ms, "positions")]
     });
     setEditing(true);
   }
@@ -1504,7 +1593,12 @@ function ProfilePage(api) {
       is_driver: form.is_driver
     };
 
-    const semPatch = { is_fam_head: form.is_fam_head };
+    const semPatch = {
+      is_fam_head: form.is_fam_head,
+      divisions: form.divisions,
+      committees: form.committees,
+      positions: form.positions
+    };
 
     if (USE_SUPABASE) {
       const { error: mErr } = await db.from("members").update(memberPatch).eq("id", m.id);
@@ -1541,6 +1635,15 @@ function ProfilePage(api) {
 
     setEditing(false);
     api.showFlash("Profile updated");
+  }
+
+  function toggleAffiliation(category, value, checked) {
+    setForm(current => ({
+      ...current,
+      [category]: checked
+        ? [...current[category], value]
+        : current[category].filter(item => item !== value)
+    }));
   }
 
   async function addRelationship() {
@@ -1744,6 +1847,13 @@ function ProfilePage(api) {
           ),
           h("label", { className: "check-wrap" }, h("input", { type: "checkbox", checked: form.is_fam_head, onChange: e => setForm(f => ({ ...f, is_fam_head: e.target.checked })) }), "Fam Head"),
           h("label", { className: "check-wrap" }, h("input", { type: "checkbox", checked: form.is_driver, onChange: e => setForm(f => ({ ...f, is_driver: e.target.checked })) }), "Driver"),
+          h("div", { className: "helper" }, "Affiliations for " + api.activeSem.name),
+          ["divisions", "committees", "positions"].map(category =>
+            h(AffiliationChoices, {
+              key: category, category, selected: form[category],
+              onToggle: toggleAffiliation
+            })
+          ),
           h("div", { className: "row-actions", style: { justifyContent: "flex-start", marginTop: 4 } },
             h("button", { className: "btn btn-dark", onClick: saveEdit }, "Save"),
             h("button", { className: "btn", onClick: () => setEditing(false) }, "Cancel")
@@ -1753,7 +1863,10 @@ function ProfilePage(api) {
           h("div", { className: "tag-row" },
             h("span", { className: "tag" }, m.hex_class || "No Hex"),
             m.is_driver && h("span", { className: "tag" }, "Driver"),
-            ms?.is_fam_head && h("span", { className: "tag" }, "Fam Head")
+            ms?.is_fam_head && h("span", { className: "tag" }, "Fam Head"),
+            affiliationOptions(ms).map(option =>
+              h("span", { key: option.value, className: "tag" }, option.icon + " " + option.label)
+            )
           ),
           h("div", { className: "profile-stat-grid" },
             h("div", { className: "profile-stat" }, h("div", { className: "label" }, "Current Semester Points"), h("div", { className: "profile-value" }, api.memberPoints(m.id) + " pts")),
