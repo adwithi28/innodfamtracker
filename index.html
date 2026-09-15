@@ -60,6 +60,7 @@
       margin: 0 auto;
       padding: 42px 0 80px;
     }
+    .page.organizer-page { width: min(1440px, calc(100% - 36px)); }
 
     .topbar {
       display: flex;
@@ -94,25 +95,36 @@
     }
     .nav-btn.active { border-bottom-color: var(--ink); }
 
-    .organizer-summary { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 22px; }
-    .organizer-stat { background: white; border: 1px solid var(--line); border-radius: 14px; padding: 12px 16px; }
-    .organizer-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; margin-bottom: 36px; }
-    .organizer-card { border: 1px solid var(--line); border-radius: 18px; padding: 20px; background: white; min-width: 0; transition: background 0.15s, outline 0.15s; }
-    .organizer-card.drop-target { background: #f2f7ec; outline: 2px dashed var(--ink); outline-offset: 3px; }
-    .organizer-card-title { font-size: 17px; text-transform: uppercase; margin-bottom: 10px; }
-    .organizer-meta { display: flex; flex-wrap: wrap; gap: 12px; font-size: 12px; margin-bottom: 16px; }
-    .organizer-heads { margin-bottom: 16px; line-height: 1.6; }
-    .organizer-group { border-top: 1px solid var(--line); padding: 12px 0; }
-    .organizer-group:last-child { padding-bottom: 0; }
-    .organizer-tiles { display: grid; gap: 7px; }
-    .organizer-person { display: flex; gap: 8px; align-items: center; padding: 10px 12px; border: 1px solid var(--line); border-radius: 11px; background: #faf9f8; cursor: grab; user-select: none; }
+    .organizer-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 14px; }
+    .organizer-toolbar .section-title { margin-right: auto; }
+    .organizer-toolbar input { width: 190px; min-height: 36px; }
+    .organizer-toolbar select { min-height: 36px; }
+    .organizer-summary { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+    .organizer-stat { background: white; border: 1px solid var(--line); border-radius: 999px; padding: 5px 10px; font-size: 11px; }
+    .organizer-board { display: grid; grid-template-columns: repeat(auto-fit, minmax(225px, 1fr)); gap: 12px; align-items: start; }
+    .organizer-card { border: 1px solid var(--line); border-radius: 14px; background: white; min-width: 0; overflow: hidden; transition: background 0.15s, outline 0.15s; }
+    .organizer-card.drop-target { background: #f2f7ec; outline: 2px dashed var(--ink); outline-offset: 2px; }
+    .organizer-card-header { padding: 12px 12px 10px; }
+    .organizer-card-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+    .organizer-card-title { font-size: 14px; text-transform: uppercase; }
+    .organizer-card-count { color: var(--muted); font-size: 11px; white-space: nowrap; }
+    .organizer-meta { display: flex; flex-wrap: wrap; gap: 10px; font-size: 11px; margin-top: 7px; }
+    .organizer-heads { font-size: 11px; line-height: 1.4; margin-top: 8px; }
+    .organizer-list { display: grid; gap: 6px; padding: 8px; border-top: 1px solid var(--soft-line); max-height: min(68vh, 700px); overflow-y: auto; }
+    .organizer-group { display: grid; gap: 4px; }
+    .organizer-group.linked { border-left: 2px solid var(--soft-line); padding-left: 5px; }
+    .organizer-tiles { display: grid; gap: 4px; }
+    .organizer-person { display: flex; gap: 6px; align-items: center; padding: 7px 8px; border: 1px solid var(--soft-line); border-radius: 8px; background: #faf9f8; cursor: grab; user-select: none; min-height: 34px; font-size: 11px; }
     .organizer-person:active { cursor: grabbing; }
     .organizer-person.dragging { opacity: 0.45; }
-    .organizer-person.little { margin-left: 15px; }
+    .organizer-person.little { margin-left: 8px; }
     .organizer-person button { border: 0; background: transparent; text-align: left; cursor: pointer; font: inherit; color: inherit; padding: 0; flex: 1; }
-    .organizer-drag-handle { color: var(--muted); font-size: 15px; letter-spacing: -4px; padding-right: 5px; }
-    .organizer-link-note { color: var(--muted); font-size: 11px; margin: 7px 0; }
-    .organizer-group select { width: 100%; margin-top: 8px; }
+    .organizer-drag-handle { color: var(--muted); font-size: 12px; letter-spacing: -3px; padding-right: 4px; }
+    .organizer-empty { color: var(--muted); font-size: 11px; padding: 12px 4px; }
+    @media (max-width: 550px) {
+      .organizer-board { grid-template-columns: 1fr; }
+      .organizer-toolbar input { width: 100%; }
+    }
 
     .section-head {
       display: flex;
@@ -798,7 +810,7 @@ function App() {
 
   if (loading) return h("main", { className: "page" }, h("div", { className: "empty" }, "Loading tracker…"));
 
-  return h("main", { className: "page" },
+  return h("main", { className: "page" + (!profileId && tab === "organizer" ? " organizer-page" : "") },
     h("header", { className: "topbar" },
       h("h1", { className: "app-title" }, "INNODATUSC Fam Tracker"),
       h("nav", { className: "nav" },
@@ -844,6 +856,7 @@ function InlineSemesterDropdown({ data, activeSemId, setActiveSemId }) {
 function FamOrganizer(api) {
   const [draggingIds, setDraggingIds] = useState([]);
   const [dropFamId, setDropFamId] = useState(null);
+  const [search, setSearch] = useState("");
   const people = [...api.data.members].sort((a, b) => a.name.localeCompare(b.name));
   const visited = new Set();
   const groups = people.reduce((result, person) => {
@@ -862,7 +875,6 @@ function FamOrganizer(api) {
     result.push({ members, littleIds, famId: famIds.length === 1 ? famIds[0] : "", mixed: famIds.length > 1 });
     return result;
   }, []);
-  const membersIn = famId => people.filter(m => (api.getMemberSem(m.id)?.fam_id || "") === famId);
   const groupRows = famId => groups.filter(g => g.mixed ? famId === "" : g.famId === famId);
   const totalDrivers = people.filter(m => m.is_driver).length;
   const totalHeads = people.filter(m => api.getMemberSem(m.id)?.is_fam_head).length;
@@ -892,31 +904,41 @@ function FamOrganizer(api) {
   }
 
   function card(fam, famId) {
-    const members = membersIn(famId);
+    const rows = groupRows(famId);
+    const members = rows.flatMap(g => g.members);
     const heads = members.filter(m => api.getMemberSem(m.id)?.is_fam_head);
     const drivers = members.filter(m => m.is_driver).length;
-    const rows = groupRows(famId);
+    const query = search.trim().toLowerCase();
+    const shownRows = rows.filter(g => !query || g.members.some(m => m.name.toLowerCase().includes(query)))
+      .sort((a, b) => Number(b.members.some(m => api.getMemberSem(m.id)?.is_fam_head)) -
+        Number(a.members.some(m => api.getMemberSem(m.id)?.is_fam_head)) ||
+        a.members[0].name.localeCompare(b.members[0].name));
     const accent = fam ? famMeta(fam.color_key).bar : "#888";
     return h("div", {
       key: famId || "unassigned",
       className: "organizer-card" + (dropFamId === famId ? " drop-target" : ""),
-      style: { borderTop: "5px solid " + accent },
+      style: { borderTop: "3px solid " + accent },
       onDragOver: e => { if (draggingIds.length) { e.preventDefault(); e.dataTransfer.dropEffect = "move"; setDropFamId(famId); } },
       onDragLeave: e => { if (!e.currentTarget.contains(e.relatedTarget)) setDropFamId(null); },
       onDrop: e => dropOnFam(e, famId)
     },
-      h("h3", { className: "organizer-card-title" }, fam ? fam.name : "Unassigned"),
-      h("div", { className: "organizer-meta" },
-        h("span", null, members.length + " people"),
-        h("span", { title: drivers + " drivers" }, "🚘 " + drivers + " drivers"),
-        h("span", null, "★ " + heads.length + " fam heads")
+      h("div", { className: "organizer-card-header" },
+        h("div", { className: "organizer-card-heading" },
+          h("h3", { className: "organizer-card-title" }, fam ? fam.name : "Unassigned"),
+          h("span", { className: "organizer-card-count" }, members.length + " people")
+        ),
+        h("div", { className: "organizer-meta" },
+          h("span", { title: drivers + " drivers" }, "🚘 " + drivers + " driver" + (drivers === 1 ? "" : "s")),
+          h("span", null, "★ " + heads.length + " head" + (heads.length === 1 ? "" : "s"))
+        ),
+        fam && h("div", { className: "organizer-heads" },
+          h("strong", null, "Heads: "),
+          heads.length ? heads.map(m => m.name).join(", ") : "None yet"
+        )
       ),
-      h("div", { className: "organizer-heads" },
-        h("strong", null, "Fam heads: "),
-        heads.length ? heads.map(m => m.name).join(", ") : "None yet"
-      ),
-      rows.length ? rows.map(g => h("div", { key: g.members[0].id, className: "organizer-group" },
-        g.mixed && h("div", { className: "helper" }, "Linked people are in different fams. Assign this group to resolve."),
+      h("div", { className: "organizer-list" },
+      shownRows.length ? shownRows.map(g => h("div", { key: g.members[0].id, className: "organizer-group" + (g.members.length > 1 ? " linked" : "") },
+        g.mixed && h("div", { className: "organizer-empty" }, "Linked people need one fam"),
         h("div", { className: "organizer-tiles" },
           g.members.map(m => h("div", {
             key: m.id,
@@ -927,28 +949,25 @@ function FamOrganizer(api) {
             onDragStart: e => startDrag(e, g, m.id),
             onDragEnd: finishDrag
           },
-            h("span", { className: "organizer-drag-handle", "aria-hidden": true }, "⋮⋮"),
+            h("span", { className: "organizer-drag-handle", "aria-hidden": true }, g.littleIds.has(m.id) ? "↳" : "⋮⋮"),
             h("button", { onClick: () => api.setProfileId(m.id) }, m.name),
             api.getMemberSem(m.id)?.is_fam_head && h("span", { title: "Fam head" }, "★"),
             m.is_driver && h("span", { title: "Driver" }, "🚘")
           ))
-        ),
-        g.members.length > 1 && h("div", { className: "organizer-link-note" }, "Linked · drag either tile to move all " + g.members.length),
-        h("select", {
-          "aria-label": "Assign " + g.members.map(m => m.name).join(", ") + " to a fam",
-          value: g.mixed ? "" : g.famId,
-          onChange: e => api.assignFamGroup(g.members[0].id, e.target.value)
-        },
-          h("option", { value: "" }, "Unassigned"),
-          api.activeFams.map(f => h("option", { key: f.id, value: f.id }, f.name))
         )
-      )) : h("div", { className: "helper" }, "No people here yet.")
+      )) : h("div", { className: "organizer-empty" }, query ? "No matching people" : "Drop people here")
+      )
     );
   }
 
   return h("section", null,
-    h("div", { className: "section-head" },
+    h("div", { className: "organizer-toolbar" },
       h("h2", { className: "section-title" }, "Organizing Fams"),
+      h("input", {
+        type: "search", placeholder: "Find a person",
+        "aria-label": "Find a person",
+        value: search, onChange: e => setSearch(e.target.value)
+      }),
       h(SemesterPicker, api)
     ),
     h("div", { className: "organizer-summary" },
@@ -956,10 +975,11 @@ function FamOrganizer(api) {
       h("div", { className: "organizer-stat" }, "🚘 " + totalDrivers + " drivers"),
       h("div", { className: "organizer-stat" }, "★ " + totalHeads + " fam heads")
     ),
-    h("p", { className: "helper", style: { marginBottom: 16 } }, "Drag a member tile onto a fam card. Linked bigs and littles move together."),
-    h("div", { className: "organizer-grid" }, api.activeFams.map(f => card(f, f.id))),
-    h("h2", { className: "section-title", style: { marginBottom: 20 } }, "People to place"),
-    h("div", { className: "organizer-grid" }, card(null, ""))
+    h("p", { className: "helper", style: { marginBottom: 10 } }, "Drag a tile to another card. Linked bigs and littles move together."),
+    h("div", { className: "organizer-board" },
+      card(null, ""),
+      api.activeFams.map(f => card(f, f.id))
+    )
   );
 }
 
