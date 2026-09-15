@@ -94,6 +94,20 @@
     }
     .nav-btn.active { border-bottom-color: var(--ink); }
 
+    .organizer-summary { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 22px; }
+    .organizer-stat { background: white; border: 1px solid var(--line); border-radius: 14px; padding: 12px 16px; }
+    .organizer-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; margin-bottom: 36px; }
+    .organizer-card { border: 1px solid var(--line); border-radius: 18px; padding: 20px; background: white; min-width: 0; }
+    .organizer-card-title { font-size: 17px; text-transform: uppercase; margin-bottom: 10px; }
+    .organizer-meta { display: flex; flex-wrap: wrap; gap: 12px; font-size: 12px; margin-bottom: 16px; }
+    .organizer-heads { margin-bottom: 16px; line-height: 1.6; }
+    .organizer-group { border-top: 1px solid var(--line); padding: 12px 0; }
+    .organizer-group:last-child { padding-bottom: 0; }
+    .organizer-person { display: flex; gap: 8px; align-items: baseline; margin: 5px 0; }
+    .organizer-person.little { padding-left: 20px; color: var(--muted); }
+    .organizer-person button { border: 0; background: transparent; text-align: left; cursor: pointer; font: inherit; color: inherit; padding: 0; }
+    .organizer-group select { width: 100%; margin-top: 8px; }
+
     .section-head {
       display: flex;
       align-items: center;
@@ -496,6 +510,26 @@ function today() { return new Date().toISOString().slice(0, 10); }
 function initials(name="") { return name.trim().split(/\s+/).map(w => w[0] || "").join("").slice(0, 2).toUpperCase() || "?"; }
 function safeName(s) { return (s || "").trim(); }
 
+// Big/little links form a connected group for the selected semester.
+function relatedGroup(data, semesterId, memberId) {
+  const members = new Set(data.members.map(m => m.id));
+  const links = (data.member_relationships || []).filter(r =>
+    (!r.semester_id || r.semester_id === semesterId) &&
+    members.has(r.member_id) && members.has(r.related_member_id)
+  );
+  const seen = new Set([memberId]);
+  const queue = [memberId];
+  while (queue.length) {
+    const id = queue.shift();
+    links.forEach(r => {
+      const other = r.member_id === id ? r.related_member_id :
+        r.related_member_id === id ? r.member_id : null;
+      if (other && !seen.has(other)) { seen.add(other); queue.push(other); }
+    });
+  }
+  return [...seen].filter(id => members.has(id));
+}
+
 function loadLocal() {
   try { return JSON.parse(localStorage.getItem(LOCAL_KEY)) || DEFAULT_LOCAL; }
   catch { return DEFAULT_LOCAL; }
@@ -669,10 +703,53 @@ function App() {
   }
 
   async function mutateLocal(fn) {
-    const next = fn(data);
+    const next = fn(loadLocal());
     setData(next);
     saveLocal(next);
     return next;
+  }
+
+  async function assignFamGroup(memberId, famId) {
+    if (famId && !activeFams.some(f => f.id === famId)) {
+      showFlash("Select a fam in this semester", "error");
+      return false;
+    }
+    const ids = relatedGroup(data, activeSemId, memberId);
+    const target = famId || null;
+    if (USE_SUPABASE) {
+      const { data: existing, error: readError } = await db.from("member_semesters")
+        .select("id,member_id").eq("semester_id", activeSemId).in("member_id", ids);
+      if (readError) { showFlash(readError.message, "error"); return false; }
+      const missing = ids.filter(id => !existing.some(ms => ms.member_id === id));
+      if (existing.length) {
+        const { error } = await db.from("member_semesters")
+          .update({ fam_id: target }).in("id", existing.map(ms => ms.id));
+        if (error) { showFlash(error.message, "error"); return false; }
+      }
+      if (missing.length) {
+        const { error } = await db.from("member_semesters").insert(
+          missing.map(id => ({ member_id: id, semester_id: activeSemId, fam_id: target, is_fam_head: false }))
+        );
+        if (error) { await loadAll(); showFlash(error.message, "error"); return false; }
+      }
+      await loadAll({ silent: true });
+    } else {
+      await mutateLocal(d => {
+        const existingIds = new Set(d.member_semesters
+          .filter(ms => ms.semester_id === activeSemId).map(ms => ms.member_id));
+        return { ...d, member_semesters: [
+          ...d.member_semesters.map(ms =>
+            ms.semester_id === activeSemId && ids.includes(ms.member_id)
+              ? { ...ms, fam_id: target } : ms),
+          ...ids.filter(id => !existingIds.has(id)).map(id => ({
+            id: uid("ms"), member_id: id, semester_id: activeSemId,
+            fam_id: target, is_fam_head: false
+          }))
+        ] };
+      });
+    }
+    showFlash(ids.length > 1 ? ids.length + " linked members moved together" : "Fam updated");
+    return true;
   }
 
   const activeSem = data.semesters.find(s => s.id === activeSemId) || data.semesters[0] || { id: DEFAULT_SEMESTER_ID, name: DEFAULT_SEMESTER_NAME };
@@ -699,13 +776,14 @@ function App() {
 
   const api = {
     data, setData, activeSem, activeSemId, setActiveSemId, activeFams,
-    showFlash, loadAll, mutateLocal, getFam, getMemberSem, memberPoints, lifetimePoints, famPoints,
+    showFlash, loadAll, mutateLocal, assignFamGroup, getFam, getMemberSem, memberPoints, lifetimePoints, famPoints,
     setTab, setProfileId
   };
 
   const TABS = [
     ["leaderboard", "Home"],
     ["members", "Members"],
+    ["organizer", "Organize Fams"],
     ["tasks", "Tasks"],
     ["activities", "Log Points"],
     ["pending", "Pending Logs"],
@@ -729,6 +807,7 @@ function App() {
     profileId ? h(ProfilePage, { ...api, member: data.members.find(m => m.id === profileId) }) :
       tab === "leaderboard" ? h(Leaderboard, api) :
       tab === "members" ? h(MembersPage, api) :
+      tab === "organizer" ? h(FamOrganizer, api) :
       tab === "tasks" ? h(TasksPage, api) :
       tab === "activities" ? h(ActivitiesPage, api) :
       tab === "pending" ? h(PendingLogsPage, api) :
@@ -753,6 +832,83 @@ function InlineSemesterDropdown({ data, activeSemId, setActiveSemId }) {
   },
     h("option", { value: "" }, "Semester"),
     data.semesters.map(s => h("option", { key: s.id, value: s.id }, s.name + (s.id === activeSemId ? " ✓" : "")))
+  );
+}
+
+function FamOrganizer(api) {
+  const people = [...api.data.members].sort((a, b) => a.name.localeCompare(b.name));
+  const visited = new Set();
+  const groups = people.reduce((result, person) => {
+    if (visited.has(person.id)) return result;
+    const ids = relatedGroup(api.data, api.activeSemId, person.id);
+    ids.forEach(id => visited.add(id));
+    const littleIds = new Set((api.data.member_relationships || [])
+      .filter(r => (!r.semester_id || r.semester_id === api.activeSemId) &&
+        r.relationship_type === "little" && ids.includes(r.member_id))
+      .map(r => r.related_member_id));
+    const members = ids.map(id => api.data.members.find(m => m.id === id))
+      .filter(Boolean).sort((a, b) =>
+        Number(littleIds.has(a.id)) - Number(littleIds.has(b.id)) ||
+        a.name.localeCompare(b.name));
+    const famIds = [...new Set(members.map(m => api.getMemberSem(m.id)?.fam_id || ""))];
+    result.push({ members, littleIds, famId: famIds.length === 1 ? famIds[0] : "", mixed: famIds.length > 1 });
+    return result;
+  }, []);
+  const membersIn = famId => people.filter(m => (api.getMemberSem(m.id)?.fam_id || "") === famId);
+  const groupRows = famId => groups.filter(g => g.mixed ? famId === "" : g.famId === famId);
+  const totalDrivers = people.filter(m => m.is_driver).length;
+  const totalHeads = people.filter(m => api.getMemberSem(m.id)?.is_fam_head).length;
+
+  function card(fam, famId) {
+    const members = membersIn(famId);
+    const heads = members.filter(m => api.getMemberSem(m.id)?.is_fam_head);
+    const drivers = members.filter(m => m.is_driver).length;
+    const rows = groupRows(famId);
+    const accent = fam ? famMeta(fam.color_key).bar : "#888";
+    return h("div", { key: famId || "unassigned", className: "organizer-card", style: { borderTop: "5px solid " + accent } },
+      h("h3", { className: "organizer-card-title" }, fam ? fam.name : "Unassigned"),
+      h("div", { className: "organizer-meta" },
+        h("span", null, members.length + " people"),
+        h("span", { title: drivers + " drivers" }, "🚘 " + drivers + " drivers"),
+        h("span", null, "★ " + heads.length + " fam heads")
+      ),
+      h("div", { className: "organizer-heads" },
+        h("strong", null, "Fam heads: "),
+        heads.length ? heads.map(m => m.name).join(", ") : "None yet"
+      ),
+      rows.length ? rows.map(g => h("div", { key: g.members[0].id, className: "organizer-group" },
+        g.mixed && h("div", { className: "helper" }, "Linked people are in different fams. Assign this group to resolve."),
+        g.members.map(m => h("div", { key: m.id, className: "organizer-person" + (g.littleIds.has(m.id) ? " little" : "") },
+          h("span", null, g.littleIds.has(m.id) ? "↳" : "•"),
+          h("button", { onClick: () => api.setProfileId(m.id) }, m.name),
+          api.getMemberSem(m.id)?.is_fam_head && h("span", { title: "Fam head" }, "★"),
+          m.is_driver && h("span", { title: "Driver" }, "🚘")
+        )),
+        h("select", {
+          "aria-label": "Assign " + g.members.map(m => m.name).join(", ") + " to a fam",
+          value: g.mixed ? "" : g.famId,
+          onChange: e => api.assignFamGroup(g.members[0].id, e.target.value)
+        },
+          h("option", { value: "" }, "Unassigned"),
+          api.activeFams.map(f => h("option", { key: f.id, value: f.id }, f.name))
+        )
+      )) : h("div", { className: "helper" }, "No people here yet.")
+    );
+  }
+
+  return h("section", null,
+    h("div", { className: "section-head" },
+      h("h2", { className: "section-title" }, "Organizing Fams"),
+      h(SemesterPicker, api)
+    ),
+    h("div", { className: "organizer-summary" },
+      h("div", { className: "organizer-stat" }, people.length + " people"),
+      h("div", { className: "organizer-stat" }, "🚘 " + totalDrivers + " drivers"),
+      h("div", { className: "organizer-stat" }, "★ " + totalHeads + " fam heads")
+    ),
+    h("div", { className: "organizer-grid" }, api.activeFams.map(f => card(f, f.id))),
+    h("h2", { className: "section-title", style: { marginBottom: 20 } }, "People to place"),
+    h("div", { className: "organizer-grid" }, card(null, ""))
   );
 }
 
@@ -1277,10 +1433,7 @@ function ProfilePage(api) {
       is_driver: form.is_driver
     };
 
-    const semPatch = {
-      fam_id: form.fam_id || null,
-      is_fam_head: form.is_fam_head
-    };
+    const semPatch = { is_fam_head: form.is_fam_head };
 
     if (USE_SUPABASE) {
       const { error: mErr } = await db.from("members").update(memberPatch).eq("id", m.id);
@@ -1298,6 +1451,9 @@ function ProfilePage(api) {
         if (insErr) return api.showFlash(insErr.message, "error");
       }
 
+      if ((ms?.fam_id || "") !== form.fam_id) {
+        if (!await api.assignFamGroup(m.id, form.fam_id)) return;
+      }
       await api.loadAll();
     } else {
       await api.mutateLocal(d => ({
@@ -1307,6 +1463,9 @@ function ProfilePage(api) {
           ? d.member_semesters.map(x => x.id === ms.id ? { ...x, ...semPatch } : x)
           : [...d.member_semesters, { id: uid("ms"), member_id: m.id, semester_id: api.activeSemId, ...semPatch }]
       }));
+      if ((ms?.fam_id || "") !== form.fam_id) {
+        if (!await api.assignFamGroup(m.id, form.fam_id)) return;
+      }
     }
 
     setEditing(false);
