@@ -865,7 +865,7 @@ function App() {
   const TABS = [
     ["leaderboard", "Home"],
     ["members", "Members"],
-    ["organizer", "Organize Fams"],
+    ["organizer", "Fams"],
     ["tasks", "Tasks"],
     ["activities", "Log Points"],
     ["pending", "Pending Logs"],
@@ -1031,7 +1031,7 @@ function FamOrganizer(api) {
 
   return h("section", null,
     h("div", { className: "organizer-toolbar" },
-      h("h2", { className: "section-title" }, "Organizing Fams"),
+      h("h2", { className: "section-title" }, "Fams"),
       h("input", {
         type: "search", placeholder: "Find a person",
         "aria-label": "Find a person",
